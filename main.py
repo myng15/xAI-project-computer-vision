@@ -41,14 +41,30 @@ def evaluate_model(model, data_loader, criterion, device):
 class DeeperNet(nn.Module):
     def __init__(self):
         super(DeeperNet, self).__init__()
+        # Define the first convolutional layer with 3 input channels, 32 output channels, a 3x3 kernel, and 1 pixel padding.
         self.conv1 = nn.Conv2d(3, 32, kernel_size=3, padding=1)
+
+        # Batch normalization applied to the output of the first convolutional layer with 32 channels.
         self.bn1 = nn.BatchNorm2d(32)
+
+        # Define the second convolutional layer with 32 input channels, 64 output channels, a 3x3 kernel, and 1 pixel padding.
         self.conv2 = nn.Conv2d(32, 64, kernel_size=3, padding=1)
+
+        # Batch normalization applied to the output of the second convolutional layer with 64 channels.
         self.bn2 = nn.BatchNorm2d(64)
+
+        # Define the third convolutional layer with 64 input channels, 128 output channels, a 3x3 kernel, and 1 pixel padding.
         self.conv3 = nn.Conv2d(64, 128, kernel_size=3, padding=1)
+
+        # Batch normalization applied to the output of the third convolutional layer with 128 channels.
         self.bn3 = nn.BatchNorm2d(128)
-        self.fc1 = nn.Linear(128 * 4 * 4, 512)  # Adjusted the input size here
+
+        # Define the first fully connected (linear) layer with input size of 128 * 4 * 4 and output size of 512.
+        self.fc1 = nn.Linear(128 * 4 * 4, 512)
+
+        # Define the second fully connected (linear) layer with input size of 512 and output size of 10 (number of classes).
         self.fc2 = nn.Linear(512, 10)
+
 
     def forward(self, x):
         x = F.relu(self.bn1(self.conv1(x)))
@@ -121,7 +137,7 @@ def main():
     train_embeddings = []
 
     # Training loop
-    num_epochs = 50
+    num_epochs = 20
 
     for epoch in range(num_epochs):
         net.train()
