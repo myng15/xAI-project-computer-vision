@@ -15,6 +15,48 @@ if __name__ == '__main__':
     torch.manual_seed(42)
     torch.backends.cudnn.deterministic = True
 
+
+    class DeeperNet(nn.Module):
+        def __init__(self):
+            super(DeeperNet, self).__init__()
+            self.conv1 = nn.Conv2d(3, 32, kernel_size=3, padding=1)
+            self.bn1 = nn.BatchNorm2d(32)
+            self.conv2 = nn.Conv2d(32, 64, kernel_size=3, padding=1)
+            self.bn2 = nn.BatchNorm2d(64)
+            self.conv3 = nn.Conv2d(64, 128, kernel_size=3, padding=1)
+            self.bn3 = nn.BatchNorm2d(128)
+            self.fc1 = nn.Linear(128 * 4 * 4, 512)  # Adjusted the input size here
+            self.fc2 = nn.Linear(512, 10)
+
+        def forward(self, x):
+            x = F.relu(self.bn1(self.conv1(x)))
+            x = F.max_pool2d(x, 2)
+            x = F.relu(self.bn2(self.conv2(x)))
+            x = F.max_pool2d(x, 2)
+            x = F.relu(self.bn3(self.conv3(x)))
+            x = F.max_pool2d(x, 2)
+            x = torch.flatten(x, 1)
+            x = F.relu(self.fc1(x))
+            x = self.fc2(x)
+            return x
+
+        def get_embeddings(self, x):
+            # Extract embeddings from the second-to-last fully connected layer (fc1)
+            x = F.relu(self.bn1(self.conv1(x)))
+            x = F.max_pool2d(x, 2)
+            x = F.relu(self.bn2(self.conv2(x)))
+            x = F.max_pool2d(x, 2)
+            x = F.relu(self.bn3(self.conv3(x)))
+            x = F.max_pool2d(x, 2)
+            x = torch.flatten(x, 1)
+            x = F.relu(self.fc1(x))
+
+            # The embeddings are the output of the fc1 layer
+            embeddings = x
+
+            return embeddings
+
+
     class Net(nn.Module):
         def __init__(self):
             super(Net, self).__init__()
@@ -76,9 +118,12 @@ if __name__ == '__main__':
 
 
 
-    PATH = './cifar_resnet.pth'
-    net = Net()
-    net.load_state_dict(torch.load(PATH))
+    PATH = './cifar_resnet_2.pth'
+    #net = Net()
+    net = DeeperNet()
+    #net.load_state_dict(torch.load(PATH))
+    #PATH = './cifar_resnet.pth' for the basic resnet model
+    #PATH = './cifar_resnet_2.pth' for the advanced resnet model
     net.eval()
 
     # Use GPU if available
@@ -90,9 +135,10 @@ if __name__ == '__main__':
     train_dataset = datasets.CIFAR10(root='./data', train=True, download=True, transform=transform)
     test_dataset = datasets.CIFAR10(root='./data', train=False, download=True, transform=transform)
 
+    num_workers = 2 if torch.cuda.is_available() else 0
     # Create data loaders
-    train_loader = DataLoader(train_dataset, batch_size=64, shuffle=True, num_workers=2)
-    test_loader = DataLoader(test_dataset, batch_size=64, shuffle=False, num_workers=2)
+    train_loader = DataLoader(train_dataset, batch_size=64, shuffle=True, num_workers=num_workers)
+    test_loader = DataLoader(test_dataset, batch_size=64, shuffle=False, num_workers=num_workers)
 
     # Define loss function and optimizer
     criterion = nn.CrossEntropyLoss()
