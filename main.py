@@ -1,114 +1,84 @@
-if __name__ == '__main__':
-    import torch
-    import torch.nn.functional as F
-    import torch.nn as nn
-    from torchvision import datasets, transforms
-    from torch.utils.data import DataLoader
-    import matplotlib.pyplot as plt
+import torch
+import torch.nn.functional as F
+import torch.nn as nn
+from torchvision import datasets, transforms
+from torch.utils.data import DataLoader
+import matplotlib.pyplot as plt
+from datetime import datetime
+current_date = datetime.now().strftime("%Y%m%d_%H%M%S")
+# Set random seeds for reproducibility
+import random
+import numpy as np
+random.seed(42)
+np.random.seed(42)
+torch.manual_seed(42)
+torch.backends.cudnn.deterministic = True
 
 
-    # Set random seeds for reproducibility
-    import random
-    import numpy as np
-    random.seed(42)
-    np.random.seed(42)
-    torch.manual_seed(42)
-    torch.backends.cudnn.deterministic = True
 
+def evaluate_model(model, data_loader, criterion, device):
+    model.eval()
+    running_loss = 0.0
+    correct = 0
+    total = 0
 
-    class DeeperNet(nn.Module):
-        def __init__(self):
-            super(DeeperNet, self).__init__()
-            self.conv1 = nn.Conv2d(3, 32, kernel_size=3, padding=1)
-            self.bn1 = nn.BatchNorm2d(32)
-            self.conv2 = nn.Conv2d(32, 64, kernel_size=3, padding=1)
-            self.bn2 = nn.BatchNorm2d(64)
-            self.conv3 = nn.Conv2d(64, 128, kernel_size=3, padding=1)
-            self.bn3 = nn.BatchNorm2d(128)
-            self.fc1 = nn.Linear(128 * 4 * 4, 512)  # Adjusted the input size here
-            self.fc2 = nn.Linear(512, 10)
+    with torch.no_grad():
+        for data in data_loader:
+            inputs, labels = data
+            inputs, labels = inputs.to(device), labels.to(device)  # Move data to the device
+            outputs = model(inputs)
+            loss = criterion(outputs, labels)
+            running_loss += loss.item()
 
-        def forward(self, x):
-            x = F.relu(self.bn1(self.conv1(x)))
-            x = F.max_pool2d(x, 2)
-            x = F.relu(self.bn2(self.conv2(x)))
-            x = F.max_pool2d(x, 2)
-            x = F.relu(self.bn3(self.conv3(x)))
-            x = F.max_pool2d(x, 2)
-            x = torch.flatten(x, 1)
-            x = F.relu(self.fc1(x))
-            x = self.fc2(x)
-            return x
+            total += labels.size(0)
+            correct += (outputs.argmax(dim=1) == labels).sum().item()
 
-        def get_embeddings(self, x):
-            # Extract embeddings from the second-to-last fully connected layer (fc1)
-            x = F.relu(self.bn1(self.conv1(x)))
-            x = F.max_pool2d(x, 2)
-            x = F.relu(self.bn2(self.conv2(x)))
-            x = F.max_pool2d(x, 2)
-            x = F.relu(self.bn3(self.conv3(x)))
-            x = F.max_pool2d(x, 2)
-            x = torch.flatten(x, 1)
-            x = F.relu(self.fc1(x))
+    loss = running_loss / len(data_loader)
+    accuracy = 100. * correct / total
 
-            # The embeddings are the output of the fc1 layer
-            embeddings = x
+    return loss, accuracy
 
-            return embeddings
+class DeeperNet(nn.Module):
+    def __init__(self):
+        super(DeeperNet, self).__init__()
+        self.conv1 = nn.Conv2d(3, 32, kernel_size=3, padding=1)
+        self.bn1 = nn.BatchNorm2d(32)
+        self.conv2 = nn.Conv2d(32, 64, kernel_size=3, padding=1)
+        self.bn2 = nn.BatchNorm2d(64)
+        self.conv3 = nn.Conv2d(64, 128, kernel_size=3, padding=1)
+        self.bn3 = nn.BatchNorm2d(128)
+        self.fc1 = nn.Linear(128 * 4 * 4, 512)  # Adjusted the input size here
+        self.fc2 = nn.Linear(512, 10)
 
+    def forward(self, x):
+        x = F.relu(self.bn1(self.conv1(x)))
+        x = F.max_pool2d(x, 2)
+        x = F.relu(self.bn2(self.conv2(x)))
+        x = F.max_pool2d(x, 2)
+        x = F.relu(self.bn3(self.conv3(x)))
+        x = F.max_pool2d(x, 2)
+        x = torch.flatten(x, 1)
+        x = F.relu(self.fc1(x))
+        x = self.fc2(x)
+        return x
 
-    class Net(nn.Module):
-        def __init__(self):
-            super(Net, self).__init__()
-            # 3 input image channels (for CIFAR-10), 6 output channels, 5x5 square convolution kernel
-            self.conv1 = nn.Conv2d(3, 6, kernel_size=5)
-            self.conv2 = nn.Conv2d(6, 16, kernel_size=5)
-            # an affine operation: y = Wx + b
-            self.fc1 = nn.Linear(16 * 5 * 5, 120)  # 5*5 from image dimension
-            self.fc2 = nn.Linear(120, 84)
-            self.fc3 = nn.Linear(84, 10)
+    def get_embeddings(self, x):
+        # Extract embeddings from the second-to-last fully connected layer (fc1)
+        x = F.relu(self.bn1(self.conv1(x)))
+        x = F.max_pool2d(x, 2)
+        x = F.relu(self.bn2(self.conv2(x)))
+        x = F.max_pool2d(x, 2)
+        x = F.relu(self.bn3(self.conv3(x)))
+        x = F.max_pool2d(x, 2)
+        x = torch.flatten(x, 1)
+        x = F.relu(self.fc1(x))
 
-        def forward(self, x):
-            # Max pooling over a (2, 2) window
-            x = F.max_pool2d(F.relu(self.conv1(x)), kernel_size=2)
-            # If the size is a square, you can specify with a single number
-            x = F.max_pool2d(F.relu(self.conv2(x)), kernel_size=2)
-            x = torch.flatten(x, 1)  # flatten all dimensions except the batch dimension
-            x = F.relu(self.fc1(x))
-            x = F.relu(self.fc2(x))
-            x = self.fc3(x)
-            return x
-        def get_embeddings(self, x):
-            # Extract embeddings from the second-to-last fully connected layer (fc2)
-            x = F.max_pool2d(F.relu(self.conv1(x)), kernel_size=2)
-            x = F.max_pool2d(F.relu(self.conv2(x)), kernel_size=2)
-            x = torch.flatten(x, 1)
-            x = F.relu(self.fc1(x))
-            x = F.relu(self.fc2(x))
+        # The embeddings are the output of the fc1 layer
+        embeddings = x
 
-            return x
+        return embeddings
 
-    def evaluate_model(model, data_loader, criterion):
-        model.eval()
-        running_loss = 0.0
-        correct = 0
-        total = 0
-
-        with torch.no_grad():
-            for data in data_loader:
-                inputs, labels = data
-                outputs = model(inputs)
-                loss = criterion(outputs, labels)
-                running_loss += loss.item()
-
-                total += labels.size(0)
-                correct += (outputs.argmax(dim=1) == labels).sum().item()
-
-        loss = running_loss / len(data_loader)
-        accuracy = 100. * correct / total
-
-        return loss, accuracy
-
+def create_data_loaders(batch_size, num_workers):
     transform = transforms.Compose([
         transforms.RandomHorizontalFlip(),
         transforms.RandomCrop(32, padding=4),
@@ -116,36 +86,30 @@ if __name__ == '__main__':
         transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5))
     ])
 
-
-
-    PATH = './cifar_resnet_2.pth'
-    #net = Net()
-    net = DeeperNet()
-    #net.load_state_dict(torch.load(PATH))
-    #PATH = './cifar_resnet.pth' for the basic resnet model
-    #PATH = './cifar_resnet_2.pth' for the advanced resnet model
-    net.eval()
-
-    # Use GPU if available
-    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-    net.to(device)
-
-
-    # Assuming you have downloaded the CIFAR-10 dataset using torchvision.datasets.CIFAR10
     train_dataset = datasets.CIFAR10(root='./data', train=True, download=True, transform=transform)
     test_dataset = datasets.CIFAR10(root='./data', train=False, download=True, transform=transform)
 
-    num_workers = 2 if torch.cuda.is_available() else 0
-    # Create data loaders
-    train_loader = DataLoader(train_dataset, batch_size=64, shuffle=True, num_workers=num_workers)
-    test_loader = DataLoader(test_dataset, batch_size=64, shuffle=False, num_workers=num_workers)
+    train_loader = DataLoader(train_dataset, batch_size=batch_size, shuffle=True, num_workers=num_workers)
+    test_loader = DataLoader(test_dataset, batch_size=batch_size, shuffle=False, num_workers=num_workers)
 
-    # Define loss function and optimizer
+    return train_loader, test_loader
+
+
+def main():
+    # Use GPU if available
+    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+
+    net = DeeperNet()
+    net.to(device)
+
+    batch_size = 64
+    num_workers = 2 if torch.cuda.is_available() else 0
+
+    train_loader, test_loader = create_data_loaders(batch_size, num_workers)
+
     criterion = nn.CrossEntropyLoss()
     optimizer = torch.optim.SGD(net.parameters(), lr=0.01, momentum=0.9, weight_decay=1e-4)
-    #scheduler = torch.optim.lr_scheduler.StepLR(optimizer, step_size=30, gamma=0.1)
     scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(optimizer, patience=5, verbose=True)
-
 
     # Lists to store losses and accuracies
     train_losses = []
@@ -155,7 +119,6 @@ if __name__ == '__main__':
 
     # Lists to store embeddings
     train_embeddings = []
-    test_embeddings = []
 
     # Training loop
     num_epochs = 50
@@ -166,6 +129,7 @@ if __name__ == '__main__':
 
         for i, data in enumerate(train_loader, 0):
             inputs, labels = data
+            inputs, labels = inputs.to(device), labels.to(device)  # Move data to the device
             optimizer.zero_grad()
             outputs = net(inputs)
             loss = criterion(outputs, labels)
@@ -178,7 +142,6 @@ if __name__ == '__main__':
 
         # Update the learning rate
         scheduler.step(running_loss)
-        #scheduler.step()
 
         # Evaluate on training and test set
         train_loss, train_accuracy = evaluate_model(net, train_loader, criterion)
@@ -195,7 +158,7 @@ if __name__ == '__main__':
         print(f"Epoch {epoch + 1}, Test Loss: {test_loss}, Test Accuracy: {test_accuracy}")
 
     train_embeddings = np.array(train_embeddings)
-    np.save('train_embeddings.npy', train_embeddings)
+    np.save('train_embeddings_'+ current_date + '.npy', train_embeddings)
 
     # Plotting Cross-Entropy Loss
     plt.figure(figsize=(12, 4))
@@ -218,6 +181,8 @@ if __name__ == '__main__':
     plt.legend()
 
     plt.tight_layout()
+    plot_file_name = f'chart_{current_date}.png'
+    plt.savefig(plot_file_name)
     plt.show()
-    plt.savefig('charts.png')
 
+main()
