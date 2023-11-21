@@ -6,6 +6,7 @@ from torch.utils.data import DataLoader
 import matplotlib.pyplot as plt
 
 
+
 # Set random seeds for reproducibility
 import random
 import numpy as np
@@ -34,6 +35,15 @@ class Net(nn.Module):
         x = F.relu(self.fc1(x))
         x = F.relu(self.fc2(x))
         x = self.fc3(x)
+        return x
+    def get_embeddings(self, x):
+        # Extract embeddings from the second-to-last fully connected layer (fc2)
+        x = F.max_pool2d(F.relu(self.conv1(x)), kernel_size=2)
+        x = F.max_pool2d(F.relu(self.conv2(x)), kernel_size=2)
+        x = torch.flatten(x, 1)
+        x = F.relu(self.fc1(x))
+        x = F.relu(self.fc2(x))
+
         return x
 
 def evaluate_model(model, data_loader, criterion):
@@ -88,6 +98,8 @@ test_loader = DataLoader(test_dataset, batch_size=64, shuffle=False, num_workers
 criterion = nn.CrossEntropyLoss()
 optimizer = torch.optim.SGD(net.parameters(), lr=0.01, momentum=0.9, weight_decay=1e-4)
 scheduler = torch.optim.lr_scheduler.StepLR(optimizer, step_size=30, gamma=0.1)
+#scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(optimizer, patience=5, verbose=True)
+
 
 # Lists to store losses and accuracies
 train_losses = []
@@ -119,7 +131,8 @@ for epoch in range(num_epochs):
         train_embeddings.extend(embeddings.cpu().detach().numpy())
 
     # Update the learning rate
-    scheduler.step()
+    scheduler.step(running_loss)
+    #scheduler.step(running_loss)
 
     # Evaluate on training and test set
     train_loss, train_accuracy = evaluate_model(net, train_loader, criterion)
@@ -160,3 +173,6 @@ plt.legend()
 
 plt.tight_layout()
 plt.show()
+plt.savefig('charts.png')
+
+#%%
