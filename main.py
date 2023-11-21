@@ -144,8 +144,8 @@ def main():
         scheduler.step(running_loss)
 
         # Evaluate on training and test set
-        train_loss, train_accuracy = evaluate_model(net, train_loader, criterion)
-        test_loss, test_accuracy = evaluate_model(net, test_loader, criterion)
+        train_loss, train_accuracy = evaluate_model(net, train_loader, criterion, device)
+        test_loss, test_accuracy = evaluate_model(net, test_loader, criterion, device)
 
         # Store losses and accuracies
         train_losses.append(train_loss)
