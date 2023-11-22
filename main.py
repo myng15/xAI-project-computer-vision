@@ -175,8 +175,8 @@ def main():
             best_accuracy = test_accuracy
 
             # Save the model checkpoint
-            checkpoint_path = f'/checkpoints_{current_day}/model_checkpoint_best_{current_date}.pth'
             Path(f"'/checkpoints_{current_day}").mkdir(parents=True, exist_ok=True)
+            checkpoint_path = f'/checkpoints_{current_day}/model_checkpoint_best_{current_date}.pth'
             torch.save(net.state_dict(), checkpoint_path)
             print(f'Saved the model checkpoint with test accuracy: {best_accuracy:.2f}')
 
