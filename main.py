@@ -4,8 +4,11 @@ import torch.nn as nn
 from torchvision import datasets, transforms
 from torch.utils.data import DataLoader
 import matplotlib.pyplot as plt
+from pathlib import Path
+
 from datetime import datetime
 current_date = datetime.now().strftime("%Y%m%d_%H%M%S")
+current_day = datetime.now().strftime("%Y%m%d")
 # Set random seeds for reproducibility
 import random
 import numpy as np
@@ -13,6 +16,7 @@ random.seed(42)
 np.random.seed(42)
 torch.manual_seed(42)
 torch.backends.cudnn.deterministic = True
+
 
 
 
@@ -171,7 +175,8 @@ def main():
             best_accuracy = test_accuracy
 
             # Save the model checkpoint
-            checkpoint_path = f'model_checkpoint_best_{current_date}.pth'
+            checkpoint_path = f'/checkpoints_{current_day}/model_checkpoint_best_{current_date}.pth'
+            Path(f"'/checkpoints_{current_day}").mkdir(parents=True, exist_ok=True)
             torch.save(net.state_dict(), checkpoint_path)
             print(f'Saved the model checkpoint with test accuracy: {best_accuracy:.2f}')
 
