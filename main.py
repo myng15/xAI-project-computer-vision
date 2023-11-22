@@ -136,6 +136,9 @@ def main():
     # Lists to store embeddings
     train_embeddings = []
 
+    # Initialize best accuracy
+    best_accuracy = 0.0
+
     # Training loop
     num_epochs = 20
 
@@ -162,6 +165,16 @@ def main():
         # Evaluate on training and test set
         train_loss, train_accuracy = evaluate_model(net, train_loader, criterion, device)
         test_loss, test_accuracy = evaluate_model(net, test_loader, criterion, device)
+
+        # Check if the current model is the best so far
+        if test_accuracy > best_accuracy:
+            best_accuracy = test_accuracy
+
+            # Save the model checkpoint
+            checkpoint_path = f'model_checkpoint_best_{current_date}.pth'
+            torch.save(net.state_dict(), checkpoint_path)
+            print(f'Saved the model checkpoint with test accuracy: {best_accuracy:.2f}')
+
 
         # Store losses and accuracies
         train_losses.append(train_loss)
