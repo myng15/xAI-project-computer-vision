@@ -8,10 +8,10 @@ from utils import print_model_summary, get_available_device, move_to_device
 device = get_available_device()
 print(f"Device: {device}\n")
 
-# Implementation of basic ConvNet
+# Implementation of basic ConvNets
 
 class SimpleConvNet(nn.Module):
-    def __init__(self):
+    def __init__(self, num_classes):
         super(SimpleConvNet, self).__init__()
         # convolutional layer (sees 32x32x3 image tensor)
         self.conv1 = nn.Conv2d(3, 16, 3, padding=1)
@@ -23,10 +23,10 @@ class SimpleConvNet(nn.Module):
         self.pool = nn.MaxPool2d(2, 2)
         # linear layer (64 * 4 * 4 -> 500)
         self.fc1 = nn.Linear(64 * 4 * 4, 500)
-        # linear layer (500 -> 10)
-        self.fc2 = nn.Linear(500, 10)
         # dropout layer (p=0.25)
         self.dropout = nn.Dropout(0.25)
+        # linear layer (500 -> num_classes)
+        self.fc2 = nn.Linear(500, num_classes)
 
     def forward(self, x):
         # add sequence of convolutional and max pooling layers
@@ -60,6 +60,128 @@ class SimpleConvNet(nn.Module):
         x = self.dropout(x)
         return x
 
+
+class SimpleConvNetV2(nn.Module):
+    def __init__(self, num_classes):
+        super(SimpleConvNetV2, self).__init__()
+        self.conv1 = nn.Conv2d(in_channels=3, out_channels=48, kernel_size=3, padding=1)
+        self.conv2 = nn.Conv2d(in_channels=48, out_channels=96, kernel_size=3, padding=1)
+        self.conv3 = nn.Conv2d(in_channels=96, out_channels=192, kernel_size=3, padding=1)
+        self.conv4 = nn.Conv2d(in_channels=192, out_channels=256, kernel_size=3, padding=1)
+        self.pool = nn.MaxPool2d(2, 2)
+        self.fc1 = nn.Linear(in_features=8*8*256, out_features=512)
+        self.fc2 = nn.Linear(in_features=512, out_features=64)
+        self.dropout = nn.Dropout(0.25)
+        self.fc3 = nn.Linear(in_features=64, out_features=num_classes)
+
+    def forward(self, x):
+        x = F.relu(self.conv1(x)) #32*32*48
+        x = F.relu(self.conv2(x)) #32*32*96
+        x = self.pool(x) #16*16*96
+        x = self.dropout(x)
+        x = F.relu(self.conv3(x)) #16*16*192
+        x = F.relu(self.conv4(x)) #16*16*256
+        x = self.pool(x) # 8*8*256
+        x = self.dropout(x)
+        x = x.view(-1, 8*8*256) # reshape x
+        x = F.relu(self.fc1(x))
+        x = F.relu(self.fc2(x))
+        x = self.dropout(x)
+        x = self.fc3(x)
+        return x
+
+    def get_embeddings(self, x):
+        x = F.relu(self.conv1(x)) #32*32*48
+        x = F.relu(self.conv2(x)) #32*32*96
+        x = self.pool(x) #16*16*96
+        x = self.dropout(x)
+        x = F.relu(self.conv3(x)) #16*16*192
+        x = F.relu(self.conv4(x)) #16*16*256
+        x = self.pool(x) # 8*8*256
+        x = self.dropout(x)
+        x = x.view(-1, 8*8*256) # reshape x
+        x = F.relu(self.fc1(x))
+        x = F.relu(self.fc2(x))
+        x = self.dropout(x)
+        return x
+
+
+# Implementation of a custom simplified version of ResNet
+
+class ResnetCustomSimplified(nn.Module):
+    def __init__(self, num_classes):
+        super().__init__()
+
+        self.conv_layer_1 = nn.Sequential(
+            nn.Conv2d(in_channels=3, out_channels=64, kernel_size=3, stride=1, padding=1),
+            nn.BatchNorm2d(64),
+            nn.ReLU(),
+        )
+        self.conv_layer_2 = nn.Sequential(
+            nn.Conv2d(in_channels=64, out_channels=128, kernel_size=3, stride=1, padding=1),
+            nn.BatchNorm2d(128),
+            nn.ReLU(),
+            nn.MaxPool2d(kernel_size=2)
+        )
+
+        self.res_layer1 = nn.Sequential(
+            nn.Conv2d(in_channels=128, out_channels=128, kernel_size=3, stride=1, padding=1),
+            nn.BatchNorm2d(128),
+            nn.ReLU(),
+            nn.Conv2d(in_channels=128, out_channels=128, kernel_size=3, stride=1, padding=1),
+            nn.BatchNorm2d(128),
+            nn.ReLU(),
+        )
+
+        self.conv_layer_3 = nn.Sequential(
+            nn.Conv2d(in_channels=128, out_channels=256, kernel_size=3, stride=1, padding=1),
+            nn.BatchNorm2d(256),
+            nn.ReLU(),
+            nn.MaxPool2d(kernel_size=2)
+        )
+
+        self.conv_layer_4 = nn.Sequential(
+            nn.Conv2d(in_channels=256, out_channels=512, kernel_size=3, stride=1, padding=1),
+            nn.BatchNorm2d(512),
+            nn.ReLU(),
+            nn.MaxPool2d(kernel_size=2)
+        )
+
+        self.res_layer2 = nn.Sequential(
+            nn.Conv2d(in_channels=512, out_channels=512, kernel_size=3, stride=1, padding=1),
+            nn.BatchNorm2d(512),
+            nn.ReLU(),
+            nn.Conv2d(in_channels=512, out_channels=512, kernel_size=3, stride=1, padding=1),
+            nn.BatchNorm2d(512),
+            nn.ReLU(),
+        )
+        self.pre_fc = nn.Sequential(nn.MaxPool2d(2),
+                                    nn.Flatten())
+        self.fc = nn.Linear(512 * 2 * 2, num_classes)
+
+    def forward(self, x):
+        out = self.conv_layer_1(x)
+        out = self.conv_layer_2(out)
+        out = self.res_layer1(out) + out
+        out = self.conv_layer_3(out)
+        out = self.conv_layer_4(out)
+        out = self.res_layer2(out) + out
+        out = self.pre_fc(out)
+        out = self.fc(out)
+        return out
+
+    def get_embeddings(self, x):
+        out = self.conv_layer_1(x)
+        out = self.conv_layer_2(out)
+        out = self.res_layer1(out) + out
+        out = self.conv_layer_3(out)
+        out = self.conv_layer_4(out)
+        out = self.res_layer2(out) + out
+        out = self.pre_fc(out)
+        return out
+
+
+
 # Implementation of ResNet
 
 class Bottleneck(nn.Module):
@@ -91,7 +213,7 @@ class Bottleneck(nn.Module):
 
 
 class ResNet(nn.Module):
-    def __init__(self, block, num_blocks, num_classes=10):
+    def __init__(self, block, num_blocks, num_classes):
         super(ResNet, self).__init__()
         self.in_planes = 64
 
@@ -122,24 +244,42 @@ class ResNet(nn.Module):
         out = self.fc(out)
         return out
 
+    def get_embeddings(self, x):
+        out = F.relu(self.bn1(self.conv1(x)))
+        out = self.layer1(out)
+        out = self.layer2(out)
+        out = self.layer3(out)
+        out = self.layer4(out)
+        out = F.avg_pool2d(out, 4)
+        out = out.view(out.size(0), -1)
+        return out
 
-def resnet50_custom():
-    return ResNet(Bottleneck, [3, 4, 6, 3])
+
+def resnet50_custom(num_classes):
+    return ResNet(Bottleneck, [3, 4, 6, 3], num_classes)
 
 
 def get_model(model_name, batch_size, num_classes):
     if model_name == 'simple_convnet':
-        model = SimpleConvNet().to(device)
+        model = SimpleConvNet(num_classes).to(device)
+    elif model_name == 'simple_convnet_v2':
+        model = SimpleConvNetV2(num_classes).to(device)
+    elif model_name == 'resnet_custom_simplified':
+        model = ResnetCustomSimplified(num_classes).to(device)
     elif model_name == 'resnet50_custom':
-        model = resnet50_custom().to(device)
+        model = resnet50_custom(num_classes).to(device)
     elif model_name == 'resnet50_fine_tuned':
-        resnet50_fine_tuned = torchvision.models.resnet50(
-            weights=None)  # Best available weights (currently alias for ResNet50_Weights.IMAGENET1K_V2)
-
+        resnet50_fine_tuned = torchvision.models.resnet50(weights=None)
         # Modify the last fully connected layer for CIFAR-10
         num_ftrs = resnet50_fine_tuned.fc.in_features
         resnet50_fine_tuned.fc = nn.Linear(num_ftrs, num_classes)
         model = resnet50_fine_tuned.to(device)
+    elif model_name == 'resnet50_fine_tuned_pretrained_weights':
+        resnet50_fine_tuned_pretrained_weights = torchvision.models.resnet50(weights='ResNet50_Weights.DEFAULT')
+        # Modify the last fully connected layer for CIFAR-10
+        num_ftrs = resnet50_fine_tuned_pretrained_weights.fc.in_features
+        resnet50_fine_tuned_pretrained_weights.fc = nn.Linear(num_ftrs, num_classes)
+        model = resnet50_fine_tuned_pretrained_weights.to(device)
 
     model = move_to_device(model, device)
     print_model_summary(model, batch_size)
