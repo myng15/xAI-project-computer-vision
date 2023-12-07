@@ -1,8 +1,6 @@
 import torch
-import torchvision
 
-import torch.nn as nn
-import torch.optim as optim
+import datetime
 
 from datasets import get_datasets, create_data_loaders
 from utils import seed_all, save_final_model, save_plots, BestModelSaver, get_available_device, DeviceDataLoader
@@ -26,21 +24,6 @@ print(f"Device: {device}\n")
 # lr = args['lr']
 
 
-
-# Specify model
-# model = ConvNet()
-# model = move_to_device(model, device)
-# print_model_summary(model, batch_size)
-# # total parameters and trainable parameters
-# total_params = sum(p.numel() for p in model.parameters())
-# print(f"{total_params:,} total parameters.")
-# total_trainable_params = sum(
-#     p.numel() for p in model.parameters() if p.requires_grad)
-# print(f"{total_trainable_params:,} training parameters.\n")
-#
-# Instantiate the loss function and optimizer
-# loss_func = nn.CrossEntropyLoss()
-# optimizer = optim.Adam(model.parameters(), lr)
 # LATER: Decay LR by a factor of 0.1 every 7 epochs
 #exp_lr_scheduler = lr_scheduler.StepLR(optimizer, step_size=7, gamma=0.1)
 
@@ -67,9 +50,9 @@ def validate(model, dl, loss_func):
     return epoch_val_loss, epoch_val_acc
 
 
-def prepare_data_loaders(trained_on_cifar10, batch_size, num_workers):
+def prepare_data_loaders(num_classes, batch_size, num_workers):
     # get the training, validation and test_datasets
-    train_data, test_data = get_datasets(trained_on_cifar10)
+    train_data, test_data = get_datasets(num_classes)
     # get the training and validation data loaders
     train_loader, valid_loader, _ = create_data_loaders(
         train_data, test_data, batch_size, num_workers
@@ -82,14 +65,15 @@ def prepare_data_loaders(trained_on_cifar10, batch_size, num_workers):
     return train_dl, valid_dl
 
 
-def train(trained_on_cifar10, model, model_name, batch_size, num_workers, epochs, max_lr, loss_func, optimizer): # LATER: add parameter lr_scheduler
+def train(num_classes, model, model_name, batch_size, num_workers, epochs, max_lr, loss_func, optimizer): # LATER: add parameter lr_scheduler
     # seed needed due to batch shuffling?
     seed_all(42)
 
-    train_dl, valid_dl = prepare_data_loaders(trained_on_cifar10, batch_size, num_workers)
+    train_dl, valid_dl = prepare_data_loaders(num_classes, batch_size, num_workers)
 
     # start training
     results = []
+    current_datetime = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
 
     for epoch in range(epochs):
         model.train()
@@ -136,14 +120,14 @@ def train(trained_on_cifar10, model, model_name, batch_size, num_workers, epochs
 
         # save model if validation loss has decreased (validation loss ever increasing indicates possible overfitting.)
         save_best_model(
-            epoch_val_loss, epoch, trained_on_cifar10, model, model_name, optimizer, loss_func
+            num_classes, current_datetime, model, model_name, optimizer, loss_func, epoch_val_loss, epoch
         )
         print('-' * 50)
 
     # save the trained model weights for a final time
-    save_final_model(epochs, trained_on_cifar10, model, model_name, optimizer, loss_func)
+    save_final_model(num_classes, current_datetime, model, model_name, optimizer, loss_func, epochs)
     # save the loss and accuracy plots
-    save_plots(trained_on_cifar10, model_name, epochs, results)
+    save_plots(num_classes, current_datetime, model_name, epochs, results)
     print('TRAINING FINISHED')
 
     return results

@@ -70,10 +70,16 @@ class BestModelSaver:
         self.epoch_val_loss_min = epoch_val_loss_min
 
     def __call__(
-            self, epoch_val_loss,
-            epoch, trained_on_cifar10, model, model_name, optimizer, loss_func
+            self, num_classes, current_datetime, model, model_name, optimizer, loss_func, epoch_val_loss,
+            epoch
     ):
-        output_folder = 'cifar10' if trained_on_cifar10 else 'cifar100'
+
+        if num_classes == 10:
+            output_folder = 'cifar10'
+        elif num_classes == 100:
+            output_folder = 'cifar100'
+        else:
+            output_folder = None
 
         if epoch_val_loss <= self.epoch_val_loss_min:
             print('Validation loss decreased ({:.6f} --> {:.6f}).  Saving model for epoch {}...'.format(
@@ -85,27 +91,32 @@ class BestModelSaver:
                 'model_state_dict': model.state_dict(),
                 'optimizer_state_dict': optimizer.state_dict(),
                 'loss': loss_func,
-            }, f'outputs/{output_folder}/best_model_{model_name}_{output_folder}.pth')
+            }, f'outputs/{output_folder}/best_model_{model_name}_{current_datetime}.pth')
             self.epoch_val_loss_min = epoch_val_loss
 
 
-def save_final_model(epochs, trained_on_cifar10, model, model_name, optimizer, loss_func):
+def save_final_model(num_classes, current_datetime, model, model_name, optimizer, loss_func, epochs):
     """
     Function to save the trained model to disk.
     """
     print(f"Saving final model...")
 
-    output_folder = 'cifar10' if trained_on_cifar10 else 'cifar100'
+    if num_classes == 10:
+        output_folder = 'cifar10'
+    elif num_classes == 100:
+        output_folder = 'cifar100'
+    else:
+        output_folder = None
 
     torch.save({
                 'epoch': epochs,
                 'model_state_dict': model.state_dict(),
                 'optimizer_state_dict': optimizer.state_dict(),
                 'loss': loss_func,
-                }, f'outputs/{output_folder}/final_model_{model_name}_{output_folder}.pth')
+                }, f'outputs/{output_folder}/final_model_{model_name}_{current_datetime}.pth')
 
 
-def save_plots(trained_on_cifar10, model_name, epochs, results):
+def save_plots(num_classes, current_datetime, model_name, epochs, results):
     """
     Function to save the loss and accuracy plots to disk.
     """
@@ -135,7 +146,13 @@ def save_plots(trained_on_cifar10, model_name, epochs, results):
     for i in range(epochs):
         epoch_count.append(i)
 
-    output_folder = 'cifar10' if trained_on_cifar10 else 'cifar100'
+    # file name parameters
+    if num_classes == 10:
+        output_folder = 'cifar10'
+    elif num_classes == 100:
+        output_folder = 'cifar100'
+    else:
+        output_folder = None
 
     # accuracy plots
     plt.figure(figsize=(10, 7))
@@ -151,7 +168,7 @@ def save_plots(trained_on_cifar10, model_name, epochs, results):
     plt.xlabel('Epochs')
     plt.ylabel('Accuracy')
     plt.legend()
-    plt.savefig(f'outputs/{output_folder}/accuracy_{model_name}.png')
+    plt.savefig(f'outputs/{output_folder}/accuracy_{model_name}_{current_datetime}.png')
     plt.show()
 
     # loss plots
@@ -168,5 +185,5 @@ def save_plots(trained_on_cifar10, model_name, epochs, results):
     plt.xlabel('Epochs')
     plt.ylabel('Loss')
     plt.legend()
-    plt.savefig(f'outputs/{output_folder}/loss_{model_name}.png')
+    plt.savefig(f'outputs/{output_folder}/loss_{model_name}_{current_datetime}.png')
     plt.show()
