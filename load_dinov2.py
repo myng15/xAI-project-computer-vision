@@ -4,6 +4,12 @@ from torchvision import datasets, transforms
 from torch.utils.data import DataLoader
 from sklearn.metrics import accuracy_score
 from sklearn.cluster import DBSCAN
+import matplotlib.pyplot as plt
+from sklearn.manifold import TSNE
+from sklearn.metrics import mean_squared_error
+from sklearn.preprocessing import StandardScaler
+from sklearn.metrics import silhouette_score
+import pandas as pd
 
 # Function to load data from npz files
 def load_data(file_path):
@@ -41,8 +47,37 @@ def anonymize_embeddings_pca(embeddings, n_components=4):
     pca = PCA(n_components=n_components)
     return pca.fit_transform(embeddings)
 
+def k_anonymization(data, k=2):
+    """
+    Perform k-anonymization on a given NumPy array.
+
+    Parameters:
+    - data: numpy.ndarray
+        The input NumPy array containing sensitive information.
+    - k: int, default=2
+        The parameter for k-anonymity. Each record is made indistinguishable
+        from at least k-1 other records.
+
+    Returns:
+    - masked_data: pandas DataFrame
+        The NumPy array after applying k-anonymization.
+    """
+    if not isinstance(data, np.ndarray):
+        raise TypeError("Input data should be a NumPy array")
+
+    # Convert NumPy array to Pandas DataFrame
+    data = pd.DataFrame(data, columns=[f'feature_{i}' for i in range(data.shape[1])])
+
+    masked_data = k_anonymization(data, k=k)
+
+    # Convert Pandas DataFrame back to NumPy array
+    masked_data = masked_data.to_numpy()
+
+    return masked_data
+
+
 # Anonymization function using density-based clustering
-def anonymize_embeddings_density_based(embeddings, eps=20.0, min_samples=3, noise_scale=0.001):
+def anonymize_embeddings_density_based(embeddings, eps=60.0, min_samples=20, noise_scale=2):
     clustering = DBSCAN(eps=eps, min_samples=min_samples).fit(embeddings)
     cluster_labels = clustering.labels_
 
@@ -51,7 +86,7 @@ def anonymize_embeddings_density_based(embeddings, eps=20.0, min_samples=3, nois
     for label in np.unique(cluster_labels[cluster_labels != -1]):
         cluster_indices = np.where(cluster_labels == label)[0]
         noise = noise_scale * torch.randn_like(torch.tensor(embeddings[cluster_indices]))  # Convert NumPy array to PyTorch tensor
-        anonymized_embeddings[cluster_indices] = torch.tensor(embeddings[cluster_indices]) + noise  # Convert NumPy array to PyTorch tensor
+        anonymized_embeddings[cluster_indices] = torch.tensor(embeddings[cluster_indices]) * (1+noise)  # Convert NumPy array to PyTorch tensor
 
     return anonymized_embeddings
 
@@ -62,16 +97,23 @@ test_file_path = '/Users/dominicliebel/Downloads/DinoV2-CIFAR10-CIFAR100/CIFAR10
 train_filenames, train_embeddings, train_labels = load_data(train_file_path)
 test_filenames, test_embeddings, test_labels = load_data(test_file_path)
 
+test_embeddings_original = test_embeddings
+
+
+
 
 
 # Anonymize train and test embeddings using density-based clustering
 train_embeddings = anonymize_embeddings_density_based(train_embeddings)
 test_embeddings = anonymize_embeddings_density_based(test_embeddings)
 
+
+
+
+
+
 # Convert NumPy arrays to PyTorch tensors
-#train_embeddings = torch.tensor(train_embeddings, dtype=torch.float32)
 train_labels = torch.tensor(train_labels, dtype=torch.long)
-#test_embeddings = torch.tensor(test_embeddings, dtype=torch.float32)
 test_labels = torch.tensor(test_labels, dtype=torch.long)
 train_embeddings = torch.as_tensor(train_embeddings, dtype=torch.float32).clone().detach()
 test_embeddings = torch.as_tensor(test_embeddings, dtype=torch.float32).clone().detach()
@@ -120,3 +162,79 @@ with torch.no_grad():
     accuracy = accuracy_score(test_labels.numpy(), predicted_labels.numpy())
 
 print(f'Accuracy on CIFAR-10 Test Dataset: {accuracy * 100:.2f}%')
+
+
+# Assuming your original embeddings have more than two dimensions
+#pca = PCA(n_components=2)
+#reduced_embeddings = pca.fit_transform(train_embeddings)
+
+# Visualize the clusters after anonymization
+#plt.scatter(test_embeddings[:, 0], test_embeddings[:, 1], c=test_labels, cmap='viridis', s=20)
+#plt.title('Clusters After Anonymization')
+#plt.xlabel('Principal Component 1')
+#plt.ylabel('Principal Component 2')
+#plt.show()
+
+# Apply t-SNE for visualization
+tsne = TSNE(n_components=2, random_state=42)
+reduced_embeddings_tsne = tsne.fit_transform(test_embeddings)
+
+# Visualize the clusters after anonymization using t-SNE
+#plt.scatter(reduced_embeddings_tsne[:, 0], reduced_embeddings_tsne[:, 1], c=test_labels, cmap='viridis', s=20)
+#plt.title('Clusters After Anonymization (t-SNE)')
+#plt.xlabel('t-SNE Component 1')
+#plt.ylabel('t-SNE Component 2')
+#plt.show()
+
+def check_reconstruction(original_embeddings, anonymized_embeddings):
+    # Flatten and normalize the embeddings
+    scaler = StandardScaler()
+    original_normalized = scaler.fit_transform(original_embeddings.flatten().reshape(-1, 1)).flatten()
+    anonymized_normalized = scaler.transform(anonymized_embeddings.flatten().reshape(-1, 1)).flatten()
+
+    # Calculate mean squared error
+    mse = mean_squared_error(original_normalized, anonymized_normalized)
+
+    return mse
+
+# Assuming you have original and anonymized embeddings
+original_embeddings = test_embeddings_original  # Adjust dimensions based on your data
+anonymized_embeddings = test_embeddings  # Anonymized embeddings
+
+# Check reconstruction error
+reconstruction_error = check_reconstruction(original_embeddings, anonymized_embeddings)
+print(f'Reconstruction Error: {reconstruction_error:.4f}')
+
+
+
+# Calculate Silhouette Score
+silhouette_avg = silhouette_score(test_embeddings_original, test_labels)
+print(f'Silhouette Score: {silhouette_avg:.4f}')
+
+
+
+
+def check_embedding_overlap(original_embeddings, anonymized_embeddings):
+    """
+    Check if any of the anonymized embeddings can be found in the original set of embeddings.
+
+    Parameters:
+    - original_embeddings: PyTorch tensor, the original set of embeddings
+    - anonymized_embeddings: PyTorch tensor, the anonymized set of embeddings
+
+    Returns:
+    - bool: True if any anonymized embedding is found in the original set, False otherwise
+    """
+
+    original_set = set(map(tuple, original_embeddings))
+    anonymized_set = set(map(tuple, anonymized_embeddings))
+
+    return any(embedding in original_set for embedding in anonymized_set)
+
+# Example usage:
+has_overlap = check_embedding_overlap(test_embeddings_original, test_embeddings)
+
+if has_overlap:
+    print("Anonymized embeddings found in the original set.")
+else:
+    print("No overlap between original and anonymized embeddings.")
