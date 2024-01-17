@@ -3,13 +3,21 @@
 import torch
 import numpy as np
 from sklearn.metrics import accuracy_score
+from torch.utils.data import DataLoader
 from anonymization import anonymize_embeddings_density_based
 from data_loader import load_data
+from train_util import train_and_evaluate
 
+if torch.cuda.is_available():
+    device = torch.device("cuda")
+    print("GPU is available.")
+else:
+    device = torch.device("cpu")
+    print("GPU is not available, using CPU.")
 
 # Load CIFAR-10 train and test datasets
-train_file_path = '/Users/dominicliebel/Downloads/DinoV2-CIFAR10-CIFAR100/CIFAR10-DINOV2-BASE/train.npz'
-test_file_path = '/Users/dominicliebel/Downloads/DinoV2-CIFAR10-CIFAR100/CIFAR10-DINOV2-BASE/test.npz'
+train_file_path = 'train_cifar10.npz'
+test_file_path = 'test_cifar10.npz'
 
 train_filenames, train_embeddings, train_labels = load_data(train_file_path)
 test_filenames, test_embeddings, test_labels = load_data(test_file_path)
@@ -18,14 +26,22 @@ test_filenames, test_embeddings, test_labels = load_data(test_file_path)
 test_embeddings_original = test_embeddings
 
 # Anonymize train and test embeddings using density-based clustering
-train_embeddings_anonymized = anonymize_embeddings_density_based(train_embeddings)
-test_embeddings_anonymized = anonymize_embeddings_density_based(test_embeddings)
+train_embeddings_anonymized = anonymize_embeddings_density_based(train_embeddings).to(device)
+test_embeddings_anonymized = anonymize_embeddings_density_based(test_embeddings).to(device)
+
+# Normalize embeddings
+train_embeddings_anonymized = torch.nn.functional.normalize(train_embeddings_anonymized, dim=1)
+test_embeddings_anonymized = torch.nn.functional.normalize(test_embeddings_anonymized, dim=1)
 
 # Convert NumPy arrays to PyTorch tensors
-train_labels = torch.tensor(train_labels, dtype=torch.long)
-test_labels = torch.tensor(test_labels, dtype=torch.long)
+train_labels = torch.tensor(train_labels, dtype=torch.long).to(device)
+test_labels = torch.tensor(test_labels, dtype=torch.long).to(device)
 train_embeddings_anonymized = torch.as_tensor(train_embeddings_anonymized, dtype=torch.float32).clone().detach()
 test_embeddings_anonymized = torch.as_tensor(test_embeddings_anonymized, dtype=torch.float32).clone().detach()
+
+# Create DataLoader for efficient batching
+train_dataset = torch.utils.data.TensorDataset(train_embeddings_anonymized, train_labels)
+train_dataloader = DataLoader(train_dataset, batch_size=8, shuffle=True)
 
 class ModifiedModel(torch.nn.Module):
     def __init__(self, input_size, output_size):
@@ -41,20 +57,23 @@ class ModifiedModel(torch.nn.Module):
         return x
 
 # Initialize the model, loss function, and optimizer
-input_size = train_embeddings.shape[1]
-output_size = len(np.unique(train_labels.numpy()))
-model = ModifiedModel(input_size, output_size)
+input_size = train_embeddings_anonymized.shape[1]
+output_size = len(np.unique(train_labels.cpu().numpy()))
+model = ModifiedModel(input_size, output_size).to(device)
 criterion = torch.nn.CrossEntropyLoss()
 optimizer = torch.optim.Adam(model.parameters(), lr=0.001)
 
 # Training parameters
 num_epochs = 20
-batch_size = 64
+
+accuracy = train_and_evaluate(model, train_dataloader, test_embeddings, test_labels)
+
+# Continue with the rest of your model.py code...
+
 
 for epoch in range(num_epochs):
-    for i in range(0, len(train_embeddings_anonymized), batch_size):
-        inputs = train_embeddings_anonymized[i:i + batch_size]
-        targets = train_labels[i:i + batch_size]
+    for inputs, targets in train_dataloader:
+        inputs, targets = inputs.to(device), targets.to(device)
 
         optimizer.zero_grad()
         outputs = model(inputs)
@@ -67,4 +86,4 @@ with torch.no_grad():
     model.eval()
     test_outputs = model(test_embeddings_anonymized)
     _, predicted_labels = torch.max(test_outputs, 1)
-    accuracy = accuracy_score(test_labels.numpy(), predicted_labels.numpy())
+    accuracy = accuracy_score(test_labels.cpu().numpy(), predicted_labels.cpu().numpy())

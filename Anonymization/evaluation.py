@@ -1,7 +1,7 @@
 # evaluation.py
 
 import torch
-from sklearn.metrics import mean_squared_error, silhouette_score
+from sklearn.metrics import mean_squared_error
 from sklearn.preprocessing import StandardScaler
 from sklearn.metrics import accuracy_score
 
@@ -46,21 +46,6 @@ def check_reconstruction(original_embeddings, anonymized_embeddings):
 
     return mse
 
-def calculate_silhouette_score(anonymized_embeddings, original_labels):
-    """
-    Calculate the Silhouette Score for the original embeddings.
-
-    Parameters:
-    - anonymized_embeddings: PyTorch tensor, the anonymized set of embeddings
-    - original_labels: PyTorch tensor, the original labels corresponding to the embeddings
-
-    Returns:
-    - float: Silhouette Score for the anonymized embeddings
-    """
-    scaler = StandardScaler()
-    anonymized_normalized = scaler.fit_transform(anonymized_embeddings)
-    silhouette_avg = silhouette_score(anonymized_normalized, original_labels)
-    return silhouette_avg
 
 
 def check_embedding_overlap(original_embeddings, anonymized_embeddings):
