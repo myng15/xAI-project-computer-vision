@@ -61,6 +61,6 @@ def anonymize_embeddings_density_based(embeddings, eps=60.0, min_samples=20, noi
     for label in np.unique(cluster_labels[cluster_labels != -1]):
         cluster_indices = np.where(cluster_labels == label)[0]
         noise = noise_scale * torch.randn_like(torch.tensor(embeddings[cluster_indices]))
-        anonymized_embeddings[cluster_indices] = torch.tensor(embeddings[cluster_indices]) * (1 + noise)
+        anonymized_embeddings[cluster_indices] = torch.tensor(embeddings[cluster_indices]) * noise
 
     return anonymized_embeddings

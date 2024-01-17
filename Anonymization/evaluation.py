@@ -1,5 +1,29 @@
+# evaluation.py
+
+import torch
 from sklearn.metrics import mean_squared_error, silhouette_score
 from sklearn.preprocessing import StandardScaler
+from sklearn.metrics import accuracy_score
+
+def evaluate_model(model, test_embeddings, test_labels):
+    """
+    Evaluate the model on the test set.
+
+    Parameters:
+    - model: PyTorch model
+    - test_embeddings: PyTorch tensor, the test set of embeddings
+    - test_labels: PyTorch tensor, the labels corresponding to the test embeddings
+
+    Returns:
+    - float: Accuracy of the model on the test set
+    """
+    with torch.no_grad():
+        model.eval()
+        test_outputs = model(test_embeddings)
+        _, predicted_labels = torch.max(test_outputs, 1)
+        accuracy = accuracy_score(test_labels.cpu().numpy(), predicted_labels.cpu().numpy())
+
+    return accuracy
 
 def check_reconstruction(original_embeddings, anonymized_embeddings):
     """
@@ -50,7 +74,7 @@ def check_embedding_overlap(original_embeddings, anonymized_embeddings):
     Returns:
     - bool: True if any anonymized embedding is found in the original set, False otherwise
     """
-    original_set = set(map(tuple, original_embeddings))
-    anonymized_set = set(map(tuple, anonymized_embeddings))
+    original_set = set(map(tuple, original_embeddings.cpu().numpy()))
+    anonymized_set = set(map(tuple, anonymized_embeddings.cpu().numpy()))
 
     return any(embedding in original_set for embedding in anonymized_set)
