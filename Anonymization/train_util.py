@@ -9,11 +9,6 @@ from sklearn.preprocessing import StandardScaler
 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
-def normalize_embeddings(embeddings):
-    scaler = StandardScaler()
-    normalized_embeddings = scaler.fit_transform(embeddings)
-    return normalized_embeddings
-
 def train_and_evaluate(model, train_dataloader, test_embeddings, test_labels, num_epochs=20, batch_size=32, device=device):
     model.to(device)
     criterion = torch.nn.CrossEntropyLoss()
