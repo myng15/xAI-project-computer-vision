@@ -21,6 +21,11 @@ def evaluate_model(model, test_embeddings, test_labels):
         model.eval()
         test_outputs = model(test_embeddings)
         _, predicted_labels = torch.max(test_outputs, 1)
-        accuracy = accuracy_score(test_labels, predicted_labels)
+
+        # Move `predicted_labels` to the CPU
+        predicted_labels_cpu = predicted_labels.cpu().numpy()
+
+        # Now you can convert `predicted_labels_cpu` to a NumPy array
+        accuracy = accuracy_score(test_labels, predicted_labels_cpu)
 
     return accuracy
