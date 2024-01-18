@@ -5,7 +5,7 @@ import numpy as np
 from sklearn.cluster import DBSCAN
 from sklearn.decomposition import PCA
 
-def anonymize_embeddings(embeddings, noise_factor=0.1):
+def anonymize_embeddings_random(embeddings, noise_factor=0.1):
     anonymized_embeddings = noise_factor * torch.randn_like(embeddings)
     return anonymized_embeddings
 
@@ -57,3 +57,11 @@ def anonymize_embeddings_density_based(embeddings, eps=1.0, min_samples=20, nois
         anonymized_embeddings[cluster_indices] += cluster_noise
 
     return anonymized_embeddings
+
+def anonymize_embeddings(embeddings, method, eps=None, min_samples=None, noise_scale=None, device="cpu"):
+    if method == 'density_based':
+        return anonymize_embeddings_density_based(embeddings, eps=eps, min_samples=min_samples, noise_scale=noise_scale, device=device)
+    elif method == 'dp':
+        return anonymize_embeddings_dp(embeddings, epsilon=eps)
+    else:
+        raise ValueError("Unsupported anonymization method")

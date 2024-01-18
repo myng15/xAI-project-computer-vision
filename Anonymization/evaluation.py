@@ -1,31 +1,51 @@
 # evaluation.py
 
 import torch
-from sklearn.metrics import mean_squared_error
-from sklearn.preprocessing import StandardScaler
-from sklearn.metrics import accuracy_score
+from anonymization import anonymize_embeddings
+from model import OptimizedModel
+from train_util import train_and_evaluate
+import numpy as np
 
-def evaluate_model(model, test_embeddings, test_labels, device="cpu"):
-    """
-    Evaluate the model on the test set.
+def find_best_parameters(original_model_accuracy, normalized_train_embeddings, normalized_test_embeddings, original_train_labels, original_test_labels, device, method, epsilons, min_samples_values, noise_scale_values):
+    best_epsilon = None
+    best_min_samples = None
+    best_noise_scale = None
+    best_accuracy = 0.0  # You can use another criterion for evaluation
+    best_reconstruction_error = float('inf')
+    reconstruction_errors = []
+    accuracy_losses = []
 
-    Parameters:
-    - model: PyTorch model
-    - test_embeddings: PyTorch tensor, the test set of embeddings
-    - test_labels: PyTorch tensor, the labels corresponding to the test embeddings
+    for eps in epsilons:
+        for min_samples in min_samples_values:
+            for noise_scale in noise_scale_values:
+                # Anonymize embeddings using selected method
+                test_anonymized_embeddings = anonymize_embeddings(normalized_test_embeddings, method, eps=eps, min_samples=min_samples, noise_scale=noise_scale, device=device)
+                train_embeddings_anonymized = anonymize_embeddings(normalized_train_embeddings, method, eps=eps, min_samples=min_samples, noise_scale=noise_scale, device=device)
 
-    Returns:
-    - float: Accuracy of the model on the test set
-    """
-    with torch.no_grad():
-        test_embeddings = test_embeddings.to(device)
-        model.eval()
-        test_outputs = model(test_embeddings)
-        _, predicted_labels = torch.max(test_outputs, 1)
+                test_anonymized_embeddings = test_anonymized_embeddings.to(device)
+                train_embeddings_anonymized = train_embeddings_anonymized.to(device)
+                normalized_test_embeddings = normalized_test_embeddings.to(device)
 
-        # Move `predicted_labels` to the CPU
-        predicted_labels_cpu = predicted_labels.cpu().numpy()
+                # Train and evaluate the model on anonymized data
+                anonymized_model = OptimizedModel(input_size=test_anonymized_embeddings.shape[1], output_size=len(np.unique(original_test_labels))).to(device)
+                anonymized_model_accuracy = train_and_evaluate(
+                    anonymized_model,
+                    train_embeddings_anonymized,
+                    original_train_labels,
+                    test_anonymized_embeddings,
+                    original_test_labels
+                )
 
-        accuracy = accuracy_score(test_labels, predicted_labels_cpu)
+                # Calculate reconstruction error and accuracy loss
+                reconstruction_error = torch.mean((normalized_test_embeddings - test_anonymized_embeddings)**2).item()
+                accuracy_loss = original_model_accuracy - anonymized_model_accuracy
 
-    return accuracy
+                # Update best epsilon based on accuracy or reconstruction error
+                if anonymized_model_accuracy > best_accuracy:
+                    best_accuracy = anonymized_model_accuracy
+                    best_epsilon = eps
+                    best_min_samples = min_samples
+                    best_noise_scale = noise_scale
+                    best_reconstruction_error = reconstruction_error
+
+    return best_epsilon, best_min_samples, best_noise_scale, best_accuracy, best_reconstruction_error, reconstruction_errors, accuracy_losses
