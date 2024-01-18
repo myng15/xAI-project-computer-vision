@@ -5,7 +5,7 @@ from sklearn.metrics import mean_squared_error
 from sklearn.preprocessing import StandardScaler
 from sklearn.metrics import accuracy_score
 
-def evaluate_model(model, test_embeddings, test_labels):
+def evaluate_model(model, test_embeddings, test_labels, device="cpu"):
     """
     Evaluate the model on the test set.
 
@@ -18,6 +18,7 @@ def evaluate_model(model, test_embeddings, test_labels):
     - float: Accuracy of the model on the test set
     """
     with torch.no_grad():
+        test_embeddings = test_embeddings.to(device)
         model.eval()
         test_outputs = model(test_embeddings)
         _, predicted_labels = torch.max(test_outputs, 1)
@@ -25,7 +26,6 @@ def evaluate_model(model, test_embeddings, test_labels):
         # Move `predicted_labels` to the CPU
         predicted_labels_cpu = predicted_labels.cpu().numpy()
 
-        # Now you can convert `predicted_labels_cpu` to a NumPy array
         accuracy = accuracy_score(test_labels, predicted_labels_cpu)
 
     return accuracy

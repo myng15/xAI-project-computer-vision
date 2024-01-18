@@ -18,7 +18,6 @@ def save_model(model, accuracy, device):
 
 def train_and_evaluate(model, train_embeddings, train_labels, test_embeddings, test_labels, device="cpu", num_epochs=20, batch_size=64):
     """Trains the model and evaluates its performance on the test set."""
-
     model.to(device)
     criterion = torch.nn.CrossEntropyLoss()
     optimizer = torch.optim.Adam(model.parameters(), lr=0.001)
@@ -28,13 +27,12 @@ def train_and_evaluate(model, train_embeddings, train_labels, test_embeddings, t
             inputs = train_embeddings[i:i+batch_size]
             targets = train_labels[i:i+batch_size]
             targets = torch.from_numpy(targets)
-            inputs, targets = inputs.to(device), targets.to(device)
-
+            inputs, targets = inputs.to(device), targets.cpu()
             optimizer.zero_grad()
             outputs = model(inputs)
             loss = criterion(outputs, targets)
             loss.backward()
             optimizer.step()
 
-    accuracy = evaluate_model(model, test_embeddings, test_labels)
+    accuracy = evaluate_model(model, test_embeddings, test_labels, device)
     return accuracy

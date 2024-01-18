@@ -25,11 +25,11 @@ def anonymize_embeddings_hashing(embeddings, salt="secret_salt"):
     hashed_embeddings = torch.tensor(np.vectorize(hash)(embeddings.cpu().numpy().astype(str) + salt), dtype=torch.long)
     return hashed_embeddings
 
-def anonymize_embeddings_pca(embeddings, n_components=10):
+def anonymize_embeddings_pca(embeddings, n_components=2):
     pca = PCA(n_components=n_components)
     return torch.tensor(pca.fit_transform(embeddings.cpu().numpy()), dtype=torch.float32)
 
-def anonymize_embeddings_density_based(embeddings, eps=1.0, min_samples=20, noise_scale=0.1):
+def anonymize_embeddings_density_based(embeddings, eps=1.0, min_samples=20, noise_scale=0.1, device="cpu"):
     """
     Anonymize embeddings using density-based clustering.
 
@@ -43,6 +43,8 @@ def anonymize_embeddings_density_based(embeddings, eps=1.0, min_samples=20, nois
     - PyTorch tensor: Anonymized embeddings
     """
     # Apply DBSCAN clustering
+    embeddings = embeddings.cpu().numpy()
+
     clustering = DBSCAN(eps=eps, min_samples=min_samples).fit(embeddings)
     cluster_labels = clustering.labels_
 
