@@ -80,9 +80,9 @@ def main(train_file_path, test_file_path):
     accuracy_losses = []
 
     # Loop through combinations
-    for eps in epsilons:
-        for min_samples in min_samples_values:
-            for noise_scale in noise_scale_values:
+    for eps_idx, eps in enumerate(epsilons):
+        for min_samples_idx, min_samples in enumerate(min_samples_values):
+            for noise_scale_idx, noise_scale in enumerate(noise_scale_values):
                 # Anonymize embeddings using density-based clustering
                 test_anonymized_embeddings = anonymize_embeddings_density_based(normalized_test_embeddings, eps=eps, min_samples=min_samples, noise_scale=noise_scale)
                 train_embeddings_anonymized = anonymize_embeddings_density_based(normalized_train_embeddings, eps=eps, min_samples=min_samples, noise_scale=noise_scale)
@@ -98,6 +98,7 @@ def main(train_file_path, test_file_path):
                 # Append values to lists for plotting
                 reconstruction_errors.append(reconstruction_error)
                 accuracy_losses.append(accuracy_loss)
+                print(f"Iteration: EPS {eps_idx+1} of {len(epsilons)}, min {min_samples_idx+1} of {len(min_samples_values)}, noise {noise_scale_idx+1} of {len(noise_scale_values)}")
 
 
 
