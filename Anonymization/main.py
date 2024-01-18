@@ -23,6 +23,9 @@ def main(train_file_path, test_file_path):
     test_filenames, test_embeddings, original_test_labels = load_data(test_file_path)
     print("Datasets loaded")
 
+    train_embeddings.to(device)
+    test_embeddings.to(device)
+
     # Normalize train and test embeddings using vectorized operations
     normalized_train_embeddings = torch.nn.functional.normalize(train_embeddings, dim=1).to(device)
     normalized_test_embeddings = torch.nn.functional.normalize(test_embeddings, dim=1).to(device)

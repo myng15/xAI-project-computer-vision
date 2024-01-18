@@ -28,6 +28,7 @@ def train_and_evaluate(model, train_embeddings, train_labels, test_embeddings, t
             inputs = train_embeddings[i:i+batch_size]
             targets = train_labels[i:i+batch_size]
             targets = torch.from_numpy(targets)
+            inputs, targets = inputs.to(device), targets.to(device)
 
             optimizer.zero_grad()
             outputs = model(inputs)
