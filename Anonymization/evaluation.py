@@ -17,6 +17,10 @@ def find_best_parameters(original_model_accuracy, normalized_train_embeddings, n
     reconstruction_errors = []
     accuracy_losses = []
 
+    all_epsilons = []
+    all_min_samples_values = []
+    all_noise_scale_values = []
+
     for eps in epsilons:
         for min_samples in min_samples_values:
             for noise_scale in noise_scale_values:
@@ -58,10 +62,15 @@ def find_best_parameters(original_model_accuracy, normalized_train_embeddings, n
                     best_noise_scale = noise_scale
                     best_reconstruction_error = reconstruction_error
 
+                # Update lists for all parameters
+                all_epsilons.append(eps)
+                all_min_samples_values.append(min_samples)
+                all_noise_scale_values.append(noise_scale)
+
                 # Print results for the current iteration
                 print(f"Iteration: Epsilon={eps}, Min Samples={min_samples}, Noise Scale={noise_scale}, "
                       f"Accuracy={anonymized_model_accuracy * 100:.2f}%,"
                       f"Reconstruction Error={reconstruction_error:.4f}")
 
     return (best_epsilon, best_min_samples, best_noise_scale, best_accuracy, best_reconstruction_error,
-            reconstruction_errors, accuracy_losses)
+            reconstruction_errors, accuracy_losses, all_epsilons, all_min_samples_values, all_noise_scale_values)
