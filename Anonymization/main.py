@@ -2,12 +2,15 @@
 
 import torch
 from model import OptimizedModel
-from anonymization import anonymize_embeddings_laplace
+from anonymization import anonymize_embeddings, anonymize_embeddings_laplace, anonymize_embeddings_dp, anonymize_embeddings_density_based
 import matplotlib.pyplot as plt
 import numpy as np
 from data_loader import load_data
 from train_util import train_and_evaluate
 from evaluation import find_best_parameters
+from sklearn.preprocessing import StandardScaler
+from visualization import visualize_clusters
+
 
 if torch.cuda.is_available():
     device = torch.device("cuda")
@@ -25,33 +28,60 @@ def main(train_file_path, test_file_path):
 
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
-    # Normalize train and test embeddings using vectorized operations
-    normalized_train_embeddings = torch.nn.functional.normalize(train_embeddings.to(device), dim=1).to(device)
-    normalized_test_embeddings = torch.nn.functional.normalize(test_embeddings.to(device), dim=1).to(device)
+    # Normalize train and test embeddings
+    scaler = StandardScaler()
+    normalized_train_embeddings = scaler.fit_transform(train_embeddings).astype(np.float32)
+    normalized_train_embeddings = torch.as_tensor(normalized_train_embeddings, dtype=torch.float32)
+    normalized_test_embeddings = scaler.transform(test_embeddings).astype(np.float32)
+    normalized_test_embeddings = torch.as_tensor(normalized_test_embeddings, dtype=torch.float32)
     print("Normalized embeddings")
+
+
+    mean_value = np.mean(normalized_train_embeddings.cpu().numpy())
+    std_dev = np.std(normalized_train_embeddings.cpu().numpy())
+
+    # Check if mean is close to 0 and standard deviation is close to 1
+    is_normalized = np.isclose(mean_value, 0.0, atol=1e-5) and np.isclose(std_dev, 1.0, atol=1e-5)
+
+    if is_normalized:
+        print("normalized_train_embeddings is normalized.")
+    else:
+        print("normalized_train_embeddings is not normalized.")
+
+    # This code ensures that both the training and test embeddings are normalized using
+    # the mean and standard deviation computed from the training set.
+    # The resulting `normalized_train_embeddings` and `normalized_test_embeddings`
+    # are NumPy arrays with the embeddings in a normalized form.
 
     # Train and evaluate the original model once
     original_model = OptimizedModel(input_size=normalized_test_embeddings.shape[1],
                                     output_size=len(np.unique(original_test_labels))).to(device)
     print("Original model created")
-    original_model_accuracy = train_and_evaluate(original_model, normalized_train_embeddings,original_train_labels,
+    original_model_accuracy = train_and_evaluate(original_model, normalized_train_embeddings, original_train_labels,
                                                  normalized_test_embeddings, original_test_labels, device=device)
     print(f'Accuracy on Original Dataset: {original_model_accuracy * 100:.2f}%')
 
-    # Anonymize train and test embeddings
-    train_embeddings_anonymized = anonymize_embeddings_laplace(normalized_train_embeddings, epsilon=0.5, device=device)
-    test_embeddings_anonymized = anonymize_embeddings_laplace(normalized_test_embeddings, epsilon=0.5, device=device)
+    # Visualize clusters using t-SNE
+    visualize_clusters(normalized_test_embeddings, original_test_labels, method='t-SNE')
 
-    # Convert NumPy arrays to PyTorch tensors
-    train_embeddings_anonymized = torch.as_tensor(train_embeddings_anonymized, dtype=torch.float32).clone().detach().to(device)
-    test_embeddings_anonymized = torch.as_tensor(test_embeddings_anonymized, dtype=torch.float32).clone().detach().to(device)
+    # Visualize clusters using PCA
+    visualize_clusters(normalized_test_embeddings, original_test_labels, method='PCA')
+
+
+
+
+    # Anonymize train and test embeddings
+    train_embeddings_anonymized = anonymize_embeddings(normalized_train_embeddings, "density_based",
+                                                           eps=0.575, min_samples=3, noise_scale=0.01, device=device)
+    test_embeddings_anonymized = anonymize_embeddings(normalized_test_embeddings, "density_based",
+                                                      eps=0.575, min_samples=3, noise_scale=0.01, device=device)
     print("Anonymized embeddings")
 
     # Visualize clusters using t-SNE
-    #visualize_clusters(test_embeddings_anonymized, original_test_labels, method='t-SNE')
+    visualize_clusters(test_embeddings_anonymized, original_test_labels, method='t-SNE')
 
     # Visualize clusters using PCA
-    #visualize_clusters(test_embeddings_anonymized, original_test_labels, method='PCA')
+    visualize_clusters(test_embeddings_anonymized, original_test_labels, method='PCA')
 
     model = OptimizedModel(input_size=train_embeddings_anonymized.shape[1], output_size=len(np.unique(original_train_labels))).to(device)
     accuracy = train_and_evaluate(model, train_embeddings_anonymized, original_train_labels, test_embeddings_anonymized, original_test_labels, device=device)
@@ -80,9 +110,9 @@ def main(train_file_path, test_file_path):
         original_model_accuracy, normalized_train_embeddings, normalized_test_embeddings,
         original_train_labels, original_test_labels, device,
         method_to_test,
-        epsilons=[1.275, 1.30, 1.325, 1.35],
-        min_samples_values=[10, 30],
-        noise_scale_values=[0.05, 0.1, 0.2]
+        epsilons=[1, 2, 3, 4, 5, 6, 10, 20, 30, 50, 60],
+        min_samples_values=[3, 10],
+        noise_scale_values=[0.01]
     )
 
     print(f"Best Epsilon: {best_epsilon}, Best Min Sample: {best_min_samples}, Best Noise Scale: {best_noise_scale},  Best Accuracy: {best_accuracy * 100:.2f}%, Best Reconstruction Error: {best_reconstruction_error}")

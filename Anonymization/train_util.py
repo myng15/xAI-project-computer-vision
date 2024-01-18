@@ -19,11 +19,11 @@ def train_and_evaluate(model, train_embeddings, train_labels, test_embeddings, t
     """Trains the model and evaluates its performance on the test set."""
     model.to(device)
     criterion = torch.nn.CrossEntropyLoss()
-    optimizer = torch.optim.Adam(model.parameters(), lr=0.002)
+    optimizer = torch.optim.Adam(model.parameters(), lr=0.001)
 
     for epoch in range(num_epochs):
         for i in range(0, len(train_embeddings), batch_size):
-            inputs = train_embeddings[i:i+batch_size].to(device)
+            inputs = torch.from_numpy((train_embeddings[i:i + batch_size].cpu().numpy()))
             targets = train_labels[i:i+batch_size]
             targets = torch.from_numpy(targets).to(device)
             optimizer.zero_grad()
@@ -48,14 +48,11 @@ def evaluate_model(model, test_embeddings, test_labels, device="cpu"):
     - float: Accuracy of the model on the test set
     """
     with torch.no_grad():
-        test_embeddings = test_embeddings.to(device)
+        test_embeddings = torch.as_tensor(test_embeddings, dtype=torch.float32).to(device)  # Convert to PyTorch tensor
         model.eval()
-        test_outputs = model(test_embeddings)
+        test_outputs = model(test_embeddings).to(device)
         _, predicted_labels = torch.max(test_outputs, 1)
 
-        # Move `predicted_labels` to the CPU
-        predicted_labels_cpu = predicted_labels.cpu().numpy()
-
-        accuracy = accuracy_score(test_labels, predicted_labels_cpu)
+        accuracy = accuracy_score(test_labels, predicted_labels)
 
     return accuracy
