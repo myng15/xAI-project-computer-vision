@@ -59,21 +59,6 @@ def main(train_file_path, test_file_path):
 
     print(f'Accuracy on Test Dataset: {accuracy * 100:.2f}%')
 
-    if normalized_test_embeddings.size(1) != test_embeddings_anonymized.size(1):
-        # Handle the dimension mismatch, possibly by adjusting the size or reshaping one of the tensors
-
-        num_classes = min(normalized_test_embeddings.size(1), test_embeddings_anonymized.size(1))
-        normalized_test_embeddings = normalized_test_embeddings[:, :num_classes]
-        test_embeddings_anonymized = test_embeddings_anonymized[:, :num_classes]
-
-        # Convert normalized_test_embeddings and test_embeddings_anonymized to sets
-        normalized_test_set = set(tuple(embedding.flatten()) for embedding in normalized_test_embeddings)
-        anonymized_set = set(tuple(embedding.flatten()) for embedding in test_embeddings_anonymized)
-
-        # Check for overlap between the sets
-        overlap = normalized_test_set.intersection(anonymized_set)
-        print(f"Overlap: {len(overlap)}")
-
     reconstruction_error = torch.mean((normalized_test_embeddings - test_embeddings_anonymized)**2).item()
     print(f'Reconstruction Error: {reconstruction_error:.4f}')
 
@@ -82,10 +67,10 @@ def main(train_file_path, test_file_path):
     anonymized_set = {tuple(embedding.flatten()) for embedding in test_embeddings_anonymized}
 
     # Check for overlap
-    has_overlap = any(embedding in anonymized_set for embedding in normalized_test_set)
+    overlap = normalized_test_set.intersection(anonymized_set)
 
-    if has_overlap:
-        print("Anonymized embeddings found in the original set.")
+    if len(overlap) > 0:
+        print(f"Overlap: {len(overlap)}")
     else:
         print("No overlap between original and anonymized embeddings.")
 
