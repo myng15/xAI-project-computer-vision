@@ -106,13 +106,14 @@ def main(train_file_path, test_file_path):
     method_to_test = 'density_based'  # Change to 'dp' for testing anonymize_embeddings_dp
 
     (best_epsilon, best_min_samples, best_noise_scale, best_accuracy,
-     best_reconstruction_error, reconstruction_errors, accuracy_losses) = find_best_parameters(
+     best_reconstruction_error, reconstruction_errors, accuracy_losses,
+     all_epsilons, all_min_samples_values, all_noise_scale_values) = find_best_parameters(
         original_model_accuracy, normalized_train_embeddings, normalized_test_embeddings,
         original_train_labels, original_test_labels, device,
         method_to_test,
-        epsilons=[1, 2, 3, 4, 5, 6, 10, 20, 30, 50, 60],
-        min_samples_values=[3, 10],
-        noise_scale_values=[0.01]
+        epsilons=[1.5, 1.75, 1.9, 2, 2.1, 2.25, 2.5],
+        min_samples_values=[2,3,4,5],
+        noise_scale_values=[0.5, 1, 1.5, 2]
     )
 
     print(f"Best Epsilon: {best_epsilon}, Best Min Sample: {best_min_samples}, Best Noise Scale: {best_noise_scale},  Best Accuracy: {best_accuracy * 100:.2f}%, Best Reconstruction Error: {best_reconstruction_error}")
@@ -123,9 +124,13 @@ def main(train_file_path, test_file_path):
     plt.xlabel('Reconstruction Error')
     plt.ylabel('Accuracy Loss')
     plt.title('Accuracy Loss vs. Reconstruction Error')
-    plt.suptitle(f'Parameters: Method={method_to_test}, EPS={best_epsilon}, min_samples={min_samples}, noise_scale={noise_scale}')
-    plt.show()
+    plt.suptitle(f'Parameters: Method={method_to_test}, EPS={best_epsilon}, min_samples={best_min_samples}, noise_scale={best_noise_scale}')
 
+    # Add text annotations for each point with epsilon, min_samples, and noise_scale values
+    for i, (error, loss, epsilon, min_samples, noise_scale) in enumerate(zip(reconstruction_errors, accuracy_losses, all_epsilons, all_min_samples_values, all_noise_scale_values)):
+        plt.text(error, loss, f'({epsilon=:.6f}, {min_samples=}, {noise_scale=:.4f})', fontsize=8, ha='right', va='bottom')
+
+    plt.show()
 
 if __name__ == "__main__":
     train_file_path = 'train_cifar10.npz'
