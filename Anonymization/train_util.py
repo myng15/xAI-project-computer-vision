@@ -23,10 +23,9 @@ def train_and_evaluate(model, train_embeddings, train_labels, test_embeddings, t
 
     for epoch in range(num_epochs):
         for i in range(0, len(train_embeddings), batch_size):
-            inputs = train_embeddings[i:i+batch_size]
+            inputs = train_embeddings[i:i+batch_size].to(device)
             targets = train_labels[i:i+batch_size]
-            targets = torch.from_numpy(targets)
-            inputs, targets = inputs.to(device), targets.cpu()
+            targets = torch.from_numpy(targets).to(device)
             optimizer.zero_grad()
             outputs = model(inputs)
             loss = criterion(outputs, targets)
