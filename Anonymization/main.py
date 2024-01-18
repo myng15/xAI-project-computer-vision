@@ -45,10 +45,10 @@ def main(train_file_path, test_file_path):
     test_embeddings_anonymized = torch.as_tensor(test_embeddings_anonymized, dtype=torch.float32).clone().detach()
 
     # Visualize clusters using t-SNE
-    visualize_clusters(test_embeddings_anonymized, original_test_labels, method='t-SNE')
+    #visualize_clusters(test_embeddings_anonymized, original_test_labels, method='t-SNE')
 
     # Visualize clusters using PCA
-    visualize_clusters(test_embeddings_anonymized, original_test_labels, method='PCA')
+    #visualize_clusters(test_embeddings_anonymized, original_test_labels, method='PCA')
 
     model = ModifiedModel(input_size=train_embeddings_anonymized.shape[1], output_size=len(np.unique(original_train_labels))).to(device)
     accuracy = train_and_evaluate(model, train_embeddings_anonymized, original_train_labels, test_embeddings_anonymized, original_test_labels, device=device)
@@ -59,8 +59,12 @@ def main(train_file_path, test_file_path):
     reconstruction_error = torch.mean((normalized_test_embeddings - test_embeddings_anonymized)**2).item()
     print(f'Reconstruction Error: {reconstruction_error:.4f}')
 
-    # Check embedding overlap using a more efficient approach
-    has_overlap = any(np.array_equal(embedding, anonymized_embedding) for embedding in normalized_test_embeddings for anonymized_embedding in test_embeddings_anonymized)
+    # Convert normalized_test_embeddings and test_embeddings_anonymized to sets
+    normalized_test_set = {tuple(embedding.flatten()) for embedding in normalized_test_embeddings}
+    anonymized_set = {tuple(embedding.flatten()) for embedding in test_embeddings_anonymized}
+
+    # Check for overlap
+    has_overlap = any(embedding in anonymized_set for embedding in normalized_test_set)
 
     if has_overlap:
         print("Anonymized embeddings found in the original set.")
@@ -80,19 +84,22 @@ def main(train_file_path, test_file_path):
         for min_samples in min_samples_values:
             for noise_scale in noise_scale_values:
                 # Anonymize embeddings using density-based clustering
-                anonymized_embeddings = anonymize_embeddings_density_based(test_embeddings, eps=eps, min_samples=min_samples, noise_scale=noise_scale)
+                test_anonymized_embeddings = anonymize_embeddings_density_based(normalized_test_embeddings, eps=eps, min_samples=min_samples, noise_scale=noise_scale)
+                train_embeddings_anonymized = anonymize_embeddings_density_based(normalized_train_embeddings, eps=eps, min_samples=min_samples, noise_scale=noise_scale)
 
                 # Train and evaluate the model on anonymized data
-                anonymized_model = ModifiedModel(input_size=anonymized_embeddings.shape[1], output_size=len(np.unique(original_test_labels))).to(device)
-                anonymized_model_accuracy = train_and_evaluate(anonymized_model, train_embeddings, original_train_labels, anonymized_embeddings, original_test_labels)
+                anonymized_model = ModifiedModel(input_size=test_anonymized_embeddings.shape[1], output_size=len(np.unique(original_test_labels))).to(device)
+                anonymized_model_accuracy = train_and_evaluate(anonymized_model, train_embeddings_anonymized, original_train_labels, test_anonymized_embeddings, original_test_labels)
 
                 # Calculate reconstruction error and accuracy loss
-                reconstruction_error = torch.mean((normalized_test_embeddings - test_embeddings_anonymized)**2).item()
+                reconstruction_error = torch.mean((normalized_test_embeddings - test_anonymized_embeddings)**2).item()
                 accuracy_loss = original_model_accuracy - anonymized_model_accuracy
 
                 # Append values to lists for plotting
-                reconstruction_errors.append(reconstruction_error.item())
-                accuracy_losses.append(accuracy_loss.item())
+                reconstruction_errors.append(reconstruction_error)
+                accuracy_losses.append(accuracy_loss)
+
+
 
     # Plotting
     plt.plot(reconstruction_errors, accuracy_losses, marker='o')
