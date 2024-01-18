@@ -2,7 +2,7 @@
 
 import torch
 from model import OptimizedModel
-from anonymization import anonymize_embeddings_dp, anonymize_embeddings
+from anonymization import anonymize_embeddings_laplace
 import matplotlib.pyplot as plt
 import numpy as np
 from data_loader import load_data
@@ -39,15 +39,14 @@ def main(train_file_path, test_file_path):
     print(f'Accuracy on Original Dataset: {original_model_accuracy * 100:.2f}%')
 
     # Anonymize train and test embeddings
-    # train_embeddings_anonymized = anonymize_embeddings_density_based(normalized_train_embeddings, eps=0.5, min_samples=10, noise_scale=5, device=device).to(device)
-    # test_embeddings_anonymized = anonymize_embeddings_density_based(normalized_test_embeddings, eps=0.5, min_samples=10, noise_scale=5, device=device).to(device)
-    train_embeddings_anonymized = anonymize_embeddings_dp(normalized_train_embeddings)
-    test_embeddings_anonymized = anonymize_embeddings_dp(normalized_test_embeddings)
+    train_embeddings_anonymized = anonymize_embeddings_laplace(normalized_train_embeddings, epsilon=0.5, device=device)
+    test_embeddings_anonymized = anonymize_embeddings_laplace(normalized_test_embeddings, epsilon=0.5, device=device)
 
     # Convert NumPy arrays to PyTorch tensors
     train_embeddings_anonymized = torch.as_tensor(train_embeddings_anonymized, dtype=torch.float32).clone().detach().to(device)
     test_embeddings_anonymized = torch.as_tensor(test_embeddings_anonymized, dtype=torch.float32).clone().detach().to(device)
     print("Anonymized embeddings")
+
     # Visualize clusters using t-SNE
     #visualize_clusters(test_embeddings_anonymized, original_test_labels, method='t-SNE')
 
@@ -81,9 +80,9 @@ def main(train_file_path, test_file_path):
         original_model_accuracy, normalized_train_embeddings, normalized_test_embeddings,
         original_train_labels, original_test_labels, device,
         method_to_test,
-        epsilons=[1.1, 1.15, 1.2, 1.25, 1.275, 1.30],
+        epsilons=[1.275, 1.30, 1.325, 1.35],
         min_samples_values=[10, 30],
-        noise_scale_values=[0.5, 2, 5]
+        noise_scale_values=[0.05, 0.1, 0.2]
     )
 
     print(f"Best Epsilon: {best_epsilon}, Best Min Sample: {best_min_samples}, Best Noise Scale: {best_noise_scale},  Best Accuracy: {best_accuracy * 100:.2f}%, Best Reconstruction Error: {best_reconstruction_error}")

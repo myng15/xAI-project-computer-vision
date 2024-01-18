@@ -9,8 +9,20 @@ def anonymize_embeddings_random(embeddings, noise_factor=0.1):
     anonymized_embeddings = noise_factor * torch.randn_like(embeddings)
     return anonymized_embeddings
 
-def anonymize_embeddings_laplace(embeddings, epsilon=0.1):
-    anonymized_embeddings = embeddings + torch.tensor(np.random.laplace(scale=epsilon, size=embeddings.shape))
+def anonymize_embeddings_laplace(embeddings, epsilon=1.0, device="cpu"):
+    """
+    Anonymize embeddings using Laplace noise.
+
+    Parameters:
+    - embeddings: PyTorch tensor, the original embeddings
+    - epsilon: float, scale parameter for Laplace distribution
+    - device: str, device to place the noise tensor on ("cpu" or "cuda")
+
+    Returns:
+    - PyTorch tensor, anonymized embeddings
+    """
+    laplace_noise = torch.tensor(np.random.laplace(scale=epsilon, size=embeddings.shape), dtype=torch.float32, device=device)
+    anonymized_embeddings = embeddings + laplace_noise
     return anonymized_embeddings
 
 def anonymize_embeddings_dp(embeddings, epsilon=1.2):
