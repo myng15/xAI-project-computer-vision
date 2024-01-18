@@ -34,7 +34,7 @@ def main(train_file_path, test_file_path):
     # Train and evaluate the original model once
     original_model = ModifiedModel(input_size=normalized_test_embeddings.shape[1], output_size=len(np.unique(original_test_labels))).to(device)
     print("Original model created")
-    original_model_accuracy = train_and_evaluate(original_model, normalized_train_embeddings, original_train_labels, normalized_test_embeddings, original_test_labels)
+    original_model_accuracy = train_and_evaluate(original_model, normalized_train_embeddings, original_train_labels, normalized_test_embeddings, original_test_labels, device=device)
     print(f'Accuracy on Original Dataset: {original_model_accuracy * 100:.2f}%')
 
 
