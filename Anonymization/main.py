@@ -98,9 +98,9 @@ def main(train_file_path, test_file_path):
         print("No overlap between original and anonymized embeddings.")
 
     # Values to try for density based anonymization
-    epsilons = [0.5, 0.75, 1]
-    min_samples_values = [3, 30]
-    noise_scale_values = [0.1, 3]
+    epsilons = [1.1, 1.15, 1.2, 1.25, 1.275, 1.30]
+    min_samples_values = [10, 30]
+    noise_scale_values = [0,5, 2, 5]
     reconstruction_errors = []
     accuracy_losses = []
 
@@ -138,11 +138,13 @@ def main(train_file_path, test_file_path):
                 print(f"Iteration: EPS {eps_idx+1} of {len(epsilons)}, min_samples {min_samples_idx+1} of "
                       f"{len(min_samples_values)}, noise {noise_scale_idx+1} of {len(noise_scale_values)}")
 
-    # Plotting
+    # Plotting for each combination
+    plt.figure()
     plt.plot(reconstruction_errors, accuracy_losses, marker='o')
     plt.xlabel('Reconstruction Error')
     plt.ylabel('Accuracy Loss')
     plt.title('Accuracy Loss vs. Reconstruction Error')
+    plt.suptitle(f'Parameters: EPS={eps}, min_samples={min_samples}, noise_scale={noise_scale}')
     plt.show()
 
 
