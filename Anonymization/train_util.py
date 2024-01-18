@@ -1,35 +1,39 @@
 # train_util.py
 
 import torch
-import numpy as np
-from sklearn.metrics import accuracy_score
-from torch.utils.data import DataLoader
 from evaluation import evaluate_model
-from sklearn.preprocessing import StandardScaler
+from torch.utils.data import DataLoader
 
-device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+def save_model(model, accuracy, device):
+    """Saves the trained model to a specified filepath."""
+    model_filepath = f"model_{accuracy:.3f}.pth"
 
-def train_and_evaluate(model, train_dataloader, test_embeddings, test_labels, num_epochs=20, batch_size=32, device=device):
+    if device == "cuda":
+        model_state_dict = model.module.state_dict()
+    else:
+        model_state_dict = model.state_dict()
+
+    torch.save(model_state_dict, model_filepath)
+    print(f"Model saved successfully to: {model_filepath}")
+
+def train_and_evaluate(model, train_embeddings, train_labels, test_embeddings, test_labels, device="cpu", num_epochs=20, batch_size=64):
+    """Trains the model and evaluates its performance on the test set."""
+
     model.to(device)
     criterion = torch.nn.CrossEntropyLoss()
     optimizer = torch.optim.Adam(model.parameters(), lr=0.001)
 
-    # Convert test_embeddings to PyTorch tensor
-    test_embeddings = torch.as_tensor(test_embeddings, dtype=torch.float32).to(device)
-
     for epoch in range(num_epochs):
-        for i, (inputs, targets) in enumerate(train_dataloader):
-            inputs, targets = inputs.to(device), targets.to(device)
+        for i in range(0, len(train_embeddings), batch_size):
+            inputs = train_embeddings[i:i+batch_size]
+            targets = train_labels[i:i+batch_size]
+            targets = torch.from_numpy(targets)
 
             optimizer.zero_grad()
             outputs = model(inputs)
             loss = criterion(outputs, targets)
             loss.backward()
             optimizer.step()
-
-            # Clear intermediate variables
-            del inputs, targets, outputs
-            torch.cuda.empty_cache()
 
     accuracy = evaluate_model(model, test_embeddings, test_labels)
     return accuracy

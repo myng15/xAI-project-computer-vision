@@ -18,22 +18,25 @@ else:
 
 @memory_profiler.profile
 def main(train_file_path, test_file_path):
-    # Load CIFAR-10 train and test datasets
+    # Load train and test datasets
     train_filenames, train_embeddings, original_train_labels = load_data(train_file_path)
     test_filenames, test_embeddings, original_test_labels = load_data(test_file_path)
-
-    # Convert NumPy arrays to PyTorch tensors and normalize on GPU
-    train_embeddings = torch.as_tensor(train_embeddings, dtype=torch.float32).to(device)
-    test_embeddings = torch.as_tensor(test_embeddings, dtype=torch.float32).to(device)
+    print("Datasets loaded")
 
     # Normalize train and test embeddings using vectorized operations
     normalized_train_embeddings = torch.nn.functional.normalize(train_embeddings, dim=1).to(device)
     normalized_test_embeddings = torch.nn.functional.normalize(test_embeddings, dim=1).to(device)
-
+    print("Normalized embeddings")
 
     # Anonymize train and test embeddings using density-based clustering
-    train_embeddings_anonymized = anonymize_embeddings_density_based(normalized_train_embeddings).to(device)
-    test_embeddings_anonymized = anonymize_embeddings_density_based(normalized_test_embeddings).to(device)
+    train_embeddings_anonymized = anonymize_embeddings_density_based(normalized_train_embeddings)
+    test_embeddings_anonymized = anonymize_embeddings_density_based(normalized_test_embeddings)
+
+    print("Anonymized embeddings")
+
+    # Convert NumPy arrays to PyTorch tensors
+    train_embeddings_anonymized = torch.as_tensor(train_embeddings_anonymized, dtype=torch.float32).clone().detach()
+    test_embeddings_anonymized = torch.as_tensor(test_embeddings_anonymized, dtype=torch.float32).clone().detach()
 
     # Visualize clusters using t-SNE
     visualize_clusters(test_embeddings_anonymized, original_test_labels, method='t-SNE')
@@ -41,22 +44,17 @@ def main(train_file_path, test_file_path):
     # Visualize clusters using PCA
     visualize_clusters(test_embeddings_anonymized, original_test_labels, method='PCA')
 
-    # Train and evaluate the model
-    train_dataset = torch.utils.data.TensorDataset(train_embeddings_anonymized, original_train_labels)
-    train_dataloader = DataLoader(train_dataset, batch_size=8, shuffle=True)
+    model = ModifiedModel(input_size=train_embeddings_anonymized.shape[1], output_size=len(np.unique(original_train_labels))).to(device)
+    accuracy = train_and_evaluate(model, train_embeddings_anonymized, original_train_labels, test_embeddings_anonymized, original_test_labels, device=device)
 
-    model = ModifiedModel(input_size=train_embeddings_anonymized.shape[1], output_size=len(np.unique(original_test_labels))).to(device)
-    accuracy = train_and_evaluate(model, train_dataloader, test_embeddings_anonymized, original_test_labels)
-
-    print(f'Accuracy on CIFAR-10 Test Dataset: {accuracy * 100:.2f}%')
+    print(f'Accuracy on Test Dataset: {accuracy * 100:.2f}%')
 
     # Calculate reconstruction error using vectorized operations
     reconstruction_error = torch.mean((normalized_test_embeddings - test_embeddings_anonymized)**2).item()
     print(f'Reconstruction Error: {reconstruction_error:.4f}')
 
     # Check embedding overlap using a more efficient approach
-    has_overlap = any(tuple(embedding.cpu().numpy()) in tuple(anonymized_embedding.cpu().numpy()) for embedding in normalized_test_embeddings for anonymized_embedding in test_embeddings_anonymized)
-
+    has_overlap = any(np.array_equal(embedding, anonymized_embedding) for embedding in normalized_test_embeddings for anonymized_embedding in test_embeddings_anonymized)
 
     if has_overlap:
         print("Anonymized embeddings found in the original set.")
@@ -71,30 +69,9 @@ def main(train_file_path, test_file_path):
 
     # Train and evaluate the original model once
     original_model = ModifiedModel(input_size=test_embeddings.shape[1], output_size=len(np.unique(original_test_labels))).to(device)
+    print("Original model created")
     original_model_accuracy = train_and_evaluate(original_model, train_embeddings, original_train_labels, test_embeddings, original_test_labels)
-
-    for epsilon in epsilons:
-        # Anonymize embeddings using density-based clustering with different values of noise
-        anonymized_train_embeddings = anonymize_embeddings_density_based(train_embeddings, eps=epsilon)
-        anonymized_test_embeddings = anonymize_embeddings_density_based(test_embeddings, eps=epsilon)
-
-        # Calculate reconstruction error
-        reconstruction_error = torch.mean((normalized_test_embeddings - test_embeddings_anonymized)**2).item()
-        reconstruction_errors.append(reconstruction_error)
-
-        # Train and evaluate the model using anonymized embeddings
-        model = ModifiedModel(input_size=anonymized_train_embeddings.shape[1], output_size=len(np.unique(original_test_labels.numpy()))).to(device)
-        model_accuracy = train_and_evaluate(model, anonymized_train_embeddings, original_test_labels, anonymized_test_embeddings, original_test_labels)
-
-        # Calculate accuracy loss
-        accuracy_loss = original_model_accuracy - model_accuracy
-        accuracy_losses.append(accuracy_loss)
-
-        # Optionally save results to a file
-        with open(f'results_epsilon_{epsilon}.txt', 'w') as file:
-            file.write(f'Reconstruction Error for Epsilon={epsilon}: {reconstruction_error}\n')
-            file.write(f'Accuracy Loss for Epsilon={epsilon}: {accuracy_loss}\n')
-
+    print(f'Accuracy on Original Dataset: {original_model_accuracy * 100:.2f}%')
 
     # Plotting
     plt.plot(reconstruction_errors, accuracy_losses, marker='o')

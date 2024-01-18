@@ -4,7 +4,6 @@ import torch
 import numpy as np
 from sklearn.cluster import DBSCAN
 from sklearn.decomposition import PCA
-import pandas as pd
 
 def anonymize_embeddings(embeddings, noise_factor=0.1):
     anonymized_embeddings = noise_factor * torch.randn_like(embeddings)
@@ -30,16 +29,7 @@ def anonymize_embeddings_pca(embeddings, n_components=10):
     pca = PCA(n_components=n_components)
     return torch.tensor(pca.fit_transform(embeddings.cpu().numpy()), dtype=torch.float32)
 
-def k_anonymization(data, k=2):
-    if not isinstance(data, np.ndarray):
-        raise TypeError("Input data should be a NumPy array")
-
-    data = pd.DataFrame(data, columns=[f'feature_{i}' for i in range(data.shape[1])])
-    masked_data = k_anonymization(data, k=k)
-    masked_data = masked_data.to_numpy()
-    return masked_data
-
-def anonymize_embeddings_density_based(embeddings, eps=60.0, min_samples=20, noise_scale=2):
+def anonymize_embeddings_density_based(embeddings, eps=50.0, min_samples=20, noise_scale=2):
     """
     Anonymize embeddings using density-based clustering.
 
