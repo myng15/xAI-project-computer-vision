@@ -1,7 +1,6 @@
 # main.py
 
 import torch
-import memory_profiler
 from model import ModifiedModel
 from visualization import visualize_clusters
 from anonymization import anonymize_embeddings_density_based
@@ -13,10 +12,11 @@ from train_util import train_and_evaluate
 
 if torch.cuda.is_available():
     device = torch.device("cuda")
+    print("cuda")
 else:
     device = torch.device("cpu")
+    print("cpu")
 
-@memory_profiler.profile
 def main(train_file_path, test_file_path):
     # Load train and test datasets
     train_filenames, train_embeddings, original_train_labels = load_data(train_file_path)
@@ -98,7 +98,7 @@ def main(train_file_path, test_file_path):
                 # Append values to lists for plotting
                 reconstruction_errors.append(reconstruction_error)
                 accuracy_losses.append(accuracy_loss)
-                print(f"Iteration: EPS {eps_idx+1} of {len(epsilons)}, min {min_samples_idx+1} of {len(min_samples_values)}, noise {noise_scale_idx+1} of {len(noise_scale_values)}")
+                print(f"Iteration: EPS {eps_idx+1} of {len(epsilons)}, min_samples {min_samples_idx+1} of {len(min_samples_values)}, noise {noise_scale_idx+1} of {len(noise_scale_values)}")
 
 
 
