@@ -13,9 +13,9 @@ def anonymize_embeddings_laplace(embeddings, epsilon=0.1):
     anonymized_embeddings = embeddings + torch.tensor(np.random.laplace(scale=epsilon, size=embeddings.shape))
     return anonymized_embeddings
 
-def anonymize_embeddings_dp(embeddings, epsilon=1.0):
+def anonymize_embeddings_dp(embeddings, epsilon=1.2):
     anonymized_embeddings = embeddings + torch.tensor(np.random.normal(scale=epsilon, size=embeddings.shape), dtype=torch.float32)
-    return embeddings
+    return anonymized_embeddings
 
 def anonymize_embeddings_permutation(embeddings):
     permutation = torch.randperm(embeddings.shape[1])
