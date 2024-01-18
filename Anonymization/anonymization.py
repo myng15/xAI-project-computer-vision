@@ -47,11 +47,11 @@ def anonymize_embeddings_density_based(embeddings, eps=1.0, min_samples=20, nois
     cluster_labels = clustering.labels_
 
     # Add noise to the original embeddings based on clusters
-    anonymized_embeddings = torch.zeros_like(torch.tensor(embeddings))
+    anonymized_embeddings = torch.zeros_like(torch.tensor(embeddings)).clone().detach()
 
     for label in np.unique(cluster_labels[cluster_labels != -1]):
         cluster_indices = np.where(cluster_labels == label)[0]
-        cluster_noise = noise_scale * torch.randn_like(torch.tensor(embeddings[cluster_indices]))
+        cluster_noise = noise_scale * torch.randn_like(torch.tensor(embeddings[cluster_indices])).clone().detach()
         anonymized_embeddings[cluster_indices] += cluster_noise
 
     return anonymized_embeddings
