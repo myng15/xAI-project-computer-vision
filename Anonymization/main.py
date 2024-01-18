@@ -28,10 +28,16 @@ def main(train_file_path, test_file_path):
     normalized_test_embeddings = torch.nn.functional.normalize(test_embeddings, dim=1).to(device)
     print("Normalized embeddings")
 
+    # Train and evaluate the original model once
+    original_model = ModifiedModel(input_size=normalized_test_embeddings.shape[1], output_size=len(np.unique(original_test_labels))).to(device)
+    print("Original model created")
+    original_model_accuracy = train_and_evaluate(original_model, normalized_train_embeddings, original_train_labels, normalized_test_embeddings, original_test_labels)
+    print(f'Accuracy on Original Dataset: {original_model_accuracy * 100:.2f}%')
+
+
     # Anonymize train and test embeddings using density-based clustering
     train_embeddings_anonymized = anonymize_embeddings_density_based(normalized_train_embeddings)
     test_embeddings_anonymized = anonymize_embeddings_density_based(normalized_test_embeddings)
-
     print("Anonymized embeddings")
 
     # Convert NumPy arrays to PyTorch tensors
@@ -62,16 +68,31 @@ def main(train_file_path, test_file_path):
         print("No overlap between original and anonymized embeddings.")
 
 
-    # Plot accuracy loss against reconstruction error
-    epsilons = [0.1]  # Different values of noise to try
+    # Values to try for density based anonymization
+    epsilons = [1.0, 1.5, 2.0]
+    min_samples_values = [10, 20, 30]
+    noise_scale_values = [0.01, 0.1, 0.5]
     reconstruction_errors = []
     accuracy_losses = []
 
-    # Train and evaluate the original model once
-    original_model = ModifiedModel(input_size=test_embeddings.shape[1], output_size=len(np.unique(original_test_labels))).to(device)
-    print("Original model created")
-    original_model_accuracy = train_and_evaluate(original_model, train_embeddings, original_train_labels, test_embeddings, original_test_labels)
-    print(f'Accuracy on Original Dataset: {original_model_accuracy * 100:.2f}%')
+    # Loop through combinations
+    for eps in epsilons:
+        for min_samples in min_samples_values:
+            for noise_scale in noise_scale_values:
+                # Anonymize embeddings using density-based clustering
+                anonymized_embeddings = anonymize_embeddings_density_based(test_embeddings, eps=eps, min_samples=min_samples, noise_scale=noise_scale)
+
+                # Train and evaluate the model on anonymized data
+                anonymized_model = ModifiedModel(input_size=anonymized_embeddings.shape[1], output_size=len(np.unique(original_test_labels))).to(device)
+                anonymized_model_accuracy = train_and_evaluate(anonymized_model, train_embeddings, original_train_labels, anonymized_embeddings, original_test_labels)
+
+                # Calculate reconstruction error and accuracy loss
+                reconstruction_error = torch.mean((normalized_test_embeddings - test_embeddings_anonymized)**2).item()
+                accuracy_loss = original_model_accuracy - anonymized_model_accuracy
+
+                # Append values to lists for plotting
+                reconstruction_errors.append(reconstruction_error.item())
+                accuracy_losses.append(accuracy_loss.item())
 
     # Plotting
     plt.plot(reconstruction_errors, accuracy_losses, marker='o')

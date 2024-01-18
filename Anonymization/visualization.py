@@ -15,7 +15,7 @@ def visualize_clusters(embeddings, labels, method='t-SNE', n_components=2):
 
 
     plt.scatter(reduced_embeddings[:, 0], reduced_embeddings[:, 1], c=labels, cmap='viridis', s=20)
-    plt.title(f'Clusters before Anonymization ({method})')
+    plt.title(f'Clusters after Anonymization ({method})')
     plt.xlabel(f'{method} Component 1')
     plt.ylabel(f'{method} Component 2')
     plt.show()

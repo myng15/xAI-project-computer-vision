@@ -29,7 +29,7 @@ def anonymize_embeddings_pca(embeddings, n_components=10):
     pca = PCA(n_components=n_components)
     return torch.tensor(pca.fit_transform(embeddings.cpu().numpy()), dtype=torch.float32)
 
-def anonymize_embeddings_density_based(embeddings, eps=50.0, min_samples=20, noise_scale=2):
+def anonymize_embeddings_density_based(embeddings, eps=1.0, min_samples=20, noise_scale=0.1):
     """
     Anonymize embeddings using density-based clustering.
 
@@ -47,8 +47,9 @@ def anonymize_embeddings_density_based(embeddings, eps=50.0, min_samples=20, noi
     cluster_labels = clustering.labels_
 
     # Add noise to the original embeddings based on clusters
-    anonymized_embeddings = torch.tensor(embeddings)
-    for label in np.unique(cluster_labels):
+    anonymized_embeddings = torch.zeros_like(torch.tensor(embeddings))
+
+    for label in np.unique(cluster_labels[cluster_labels != -1]):
         cluster_indices = np.where(cluster_labels == label)[0]
         cluster_noise = noise_scale * torch.randn_like(torch.tensor(embeddings[cluster_indices]))
         anonymized_embeddings[cluster_indices] += cluster_noise
