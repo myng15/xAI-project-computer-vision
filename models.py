@@ -8,6 +8,7 @@ from utils import print_model_summary, get_available_device, move_to_device
 device = get_available_device()
 print(f"Device: {device}\n")
 
+
 # Implementation of basic ConvNets
 
 class SimpleConvNet(nn.Module):
@@ -69,21 +70,21 @@ class SimpleConvNetV2(nn.Module):
         self.conv3 = nn.Conv2d(in_channels=96, out_channels=192, kernel_size=3, padding=1)
         self.conv4 = nn.Conv2d(in_channels=192, out_channels=256, kernel_size=3, padding=1)
         self.pool = nn.MaxPool2d(2, 2)
-        self.fc1 = nn.Linear(in_features=8*8*256, out_features=512)
+        self.fc1 = nn.Linear(in_features=8 * 8 * 256, out_features=512)
         self.fc2 = nn.Linear(in_features=512, out_features=64)
         self.dropout = nn.Dropout(0.25)
         self.fc3 = nn.Linear(in_features=64, out_features=num_classes)
 
     def forward(self, x):
-        x = F.relu(self.conv1(x)) #32*32*48
-        x = F.relu(self.conv2(x)) #32*32*96
-        x = self.pool(x) #16*16*96
+        x = F.relu(self.conv1(x))  # 32*32*48
+        x = F.relu(self.conv2(x))  # 32*32*96
+        x = self.pool(x)  # 16*16*96
         x = self.dropout(x)
-        x = F.relu(self.conv3(x)) #16*16*192
-        x = F.relu(self.conv4(x)) #16*16*256
-        x = self.pool(x) # 8*8*256
+        x = F.relu(self.conv3(x))  # 16*16*192
+        x = F.relu(self.conv4(x))  # 16*16*256
+        x = self.pool(x)  # 8*8*256
         x = self.dropout(x)
-        x = x.view(-1, 8*8*256) # reshape x
+        x = x.view(-1, 8 * 8 * 256)  # reshape x
         x = F.relu(self.fc1(x))
         x = F.relu(self.fc2(x))
         x = self.dropout(x)
@@ -91,15 +92,15 @@ class SimpleConvNetV2(nn.Module):
         return x
 
     def get_embeddings(self, x):
-        x = F.relu(self.conv1(x)) #32*32*48
-        x = F.relu(self.conv2(x)) #32*32*96
-        x = self.pool(x) #16*16*96
+        x = F.relu(self.conv1(x))  # 32*32*48
+        x = F.relu(self.conv2(x))  # 32*32*96
+        x = self.pool(x)  # 16*16*96
         x = self.dropout(x)
-        x = F.relu(self.conv3(x)) #16*16*192
-        x = F.relu(self.conv4(x)) #16*16*256
-        x = self.pool(x) # 8*8*256
+        x = F.relu(self.conv3(x))  # 16*16*192
+        x = F.relu(self.conv4(x))  # 16*16*256
+        x = self.pool(x)  # 8*8*256
         x = self.dropout(x)
-        x = x.view(-1, 8*8*256) # reshape x
+        x = x.view(-1, 8 * 8 * 256)  # reshape x
         x = F.relu(self.fc1(x))
         x = F.relu(self.fc2(x))
         x = self.dropout(x)
@@ -181,8 +182,35 @@ class ResnetCustomSimplified(nn.Module):
         return out
 
 
-
 # Implementation of ResNet
+
+class BasicBlock(nn.Module):
+    expansion = 1
+
+    def __init__(self, in_planes, planes, stride=1):
+        super(BasicBlock, self).__init__()
+        self.conv1 = nn.Conv2d(
+            in_planes, planes, kernel_size=3, stride=stride, padding=1, bias=False)
+        self.bn1 = nn.BatchNorm2d(planes)
+        self.conv2 = nn.Conv2d(planes, planes, kernel_size=3,
+                               stride=1, padding=1, bias=False)
+        self.bn2 = nn.BatchNorm2d(planes)
+
+        self.shortcut = nn.Sequential()
+        if stride != 1 or in_planes != self.expansion*planes:
+            self.shortcut = nn.Sequential(
+                nn.Conv2d(in_planes, self.expansion*planes,
+                          kernel_size=1, stride=stride, bias=False),
+                nn.BatchNorm2d(self.expansion*planes)
+            )
+
+    def forward(self, x):
+        out = F.relu(self.bn1(self.conv1(x)))
+        out = self.bn2(self.conv2(out))
+        out += self.shortcut(x)
+        out = F.relu(out)
+        return out
+
 
 class Bottleneck(nn.Module):
     expansion = 4
@@ -193,14 +221,14 @@ class Bottleneck(nn.Module):
         self.bn1 = nn.BatchNorm2d(planes)
         self.conv2 = nn.Conv2d(planes, planes, kernel_size=3, stride=stride, padding=1, bias=False)
         self.bn2 = nn.BatchNorm2d(planes)
-        self.conv3 = nn.Conv2d(planes, self.expansion*planes, kernel_size=1, bias=False)
-        self.bn3 = nn.BatchNorm2d(self.expansion*planes)
+        self.conv3 = nn.Conv2d(planes, self.expansion * planes, kernel_size=1, bias=False)
+        self.bn3 = nn.BatchNorm2d(self.expansion * planes)
 
         self.shortcut = nn.Sequential()
-        if stride != 1 or in_planes != self.expansion*planes:
+        if stride != 1 or in_planes != self.expansion * planes:
             self.shortcut = nn.Sequential(
-              nn.Conv2d(in_planes, self.expansion*planes, kernel_size=1, stride=stride, bias=False),
-              nn.BatchNorm2d(self.expansion*planes)
+                nn.Conv2d(in_planes, self.expansion * planes, kernel_size=1, stride=stride, bias=False),
+                nn.BatchNorm2d(self.expansion * planes)
             )
 
     def forward(self, x):
@@ -223,10 +251,10 @@ class ResNet(nn.Module):
         self.layer2 = self._make_layer(block, 128, num_blocks[1], stride=2)
         self.layer3 = self._make_layer(block, 256, num_blocks[2], stride=2)
         self.layer4 = self._make_layer(block, 512, num_blocks[3], stride=2)
-        self.fc = nn.Linear(512*block.expansion, num_classes)
+        self.fc = nn.Linear(512 * block.expansion, num_classes)
 
     def _make_layer(self, block, planes, num_blocks, stride):
-        strides = [stride] + [1]*(num_blocks-1)
+        strides = [stride] + [1] * (num_blocks - 1)
         layers = []
         for stride in strides:
             layers.append(block(self.in_planes, planes, stride))
@@ -255,6 +283,10 @@ class ResNet(nn.Module):
         return out
 
 
+def resnet18_custom(num_classes):
+    return ResNet(BasicBlock, [2, 2, 2, 2], num_classes)
+
+
 def resnet50_custom(num_classes):
     return ResNet(Bottleneck, [3, 4, 6, 3], num_classes)
 
@@ -266,6 +298,8 @@ def get_model(model_name, batch_size, num_classes):
         model = SimpleConvNetV2(num_classes).to(device)
     elif model_name == 'resnet_custom_simplified':
         model = ResnetCustomSimplified(num_classes).to(device)
+    elif model_name == 'resnet18_custom':
+        model = resnet18_custom(num_classes).to(device)
     elif model_name == 'resnet50_custom':
         model = resnet50_custom(num_classes).to(device)
     elif model_name == 'resnet50_fine_tuned':
@@ -287,6 +321,6 @@ def get_model(model_name, batch_size, num_classes):
     return model
 
 
-def get_loss_func(loss_func_name):
-    if loss_func_name == 'cross_entropy':
-        return nn.CrossEntropyLoss()
+#def get_loss_func(loss_func_name):
+#    if loss_func_name == 'cross_entropy':
+#        return nn.CrossEntropyLoss()
