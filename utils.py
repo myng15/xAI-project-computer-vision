@@ -20,11 +20,11 @@ def seed_all(seed=42):
 # Print a summary using torchinfo
 def print_model_summary(model, batch_size):
     print(summary(model=model,
-            input_size=(batch_size, 3, 32, 32), # make sure this is "input_size", not "input_shape"
-            col_names=["input_size", "output_size", "num_params", "trainable"],
-            col_width=20,
-            row_settings=["var_names"]
-    ))
+                  input_size=(batch_size, 3, 32, 32),  # make sure the param name is "input_size", not "input_shape"
+                  col_names=["input_size", "output_size", "num_params", "trainable"],
+                  col_width=20,
+                  row_settings=["var_names"]
+                  ))
 
 
 # Check if your system has cuda gpu or only cpu and get the currently available one
@@ -65,13 +65,13 @@ class BestModelSaver:
     """
 
     def __init__(
-        self, epoch_val_loss_min=np.Inf
+            self, epoch_val_loss_min=np.Inf
     ):
         self.epoch_val_loss_min = epoch_val_loss_min
 
     def __call__(
             self, num_classes, current_datetime, model, model_name, optimizer, loss_func, epoch_val_loss,
-            epoch
+            epoch, optim_code=''
     ):
 
         if num_classes == 10:
@@ -82,7 +82,7 @@ class BestModelSaver:
             output_folder = None
 
         if epoch_val_loss <= self.epoch_val_loss_min:
-            print('Validation loss decreased ({:.6f} --> {:.6f}).  Saving model for epoch {}...'.format(
+            print('Validation loss decreased ({:.4f} --> {:.4f}).  Saving model for epoch {}...'.format(
                 self.epoch_val_loss_min,
                 epoch_val_loss,
                 epoch + 1))
@@ -90,12 +90,12 @@ class BestModelSaver:
                 'epoch': epoch + 1,
                 'model_state_dict': model.state_dict(),
                 'optimizer_state_dict': optimizer.state_dict(),
-                'loss': loss_func,
-            }, f'outputs/{output_folder}/best_model_{model_name}_{current_datetime}.pth')
+                'loss_func': loss_func,
+            }, f'outputs/{output_folder}/best_model_{model_name}{optim_code}_{current_datetime}.pth')
             self.epoch_val_loss_min = epoch_val_loss
 
 
-def save_final_model(num_classes, current_datetime, model, model_name, optimizer, loss_func, epochs):
+def save_final_model(num_classes, current_datetime, model, model_name, optimizer, loss_func, epochs, results, optim_code=''):
     """
     Function to save the trained model to disk.
     """
@@ -109,81 +109,11 @@ def save_final_model(num_classes, current_datetime, model, model_name, optimizer
         output_folder = None
 
     torch.save({
-                'epoch': epochs,
-                'model_state_dict': model.state_dict(),
-                'optimizer_state_dict': optimizer.state_dict(),
-                'loss': loss_func,
-                }, f'outputs/{output_folder}/final_model_{model_name}_{current_datetime}.pth')
+        'epoch': epochs,
+        'model_state_dict': model.state_dict(),
+        'optimizer_state_dict': optimizer.state_dict(),
+        'loss_func': loss_func,
+        'results': results
+    }, f'outputs/{output_folder}/final_model_{model_name}{optim_code}_{current_datetime}.pth')
 
 
-def save_plots(num_classes, current_datetime, model_name, epochs, results):
-    """
-    Function to save the loss and accuracy plots to disk.
-    """
-
-    # Training Loss
-    avg_train_loss = []
-    for result in results:
-        avg_train_loss.append(result['avg_train_loss'])
-
-    # Training Accuracy
-    avg_train_acc = []
-    for result in results:
-        avg_train_acc.append(result['avg_train_acc'])
-
-    # Validation Loss
-    avg_val_loss = []
-    for result in results:
-        avg_val_loss.append(result['avg_valid_loss'])
-
-    # Validation Accuracy
-    avg_val_acc = []
-    for result in results:
-        avg_val_acc.append(result['avg_val_acc'])
-
-    # Epochs count
-    epoch_count = []
-    for i in range(epochs):
-        epoch_count.append(i)
-
-    # file name parameters
-    if num_classes == 10:
-        output_folder = 'cifar10'
-    elif num_classes == 100:
-        output_folder = 'cifar100'
-    else:
-        output_folder = None
-
-    # accuracy plots
-    plt.figure(figsize=(10, 7))
-    plt.plot(
-        epoch_count, avg_train_acc, color='green', linestyle='-',
-        label='train'
-    )
-    plt.plot(
-        epoch_count, avg_val_acc, color='blue', linestyle='-',
-        label='validation'
-    )
-    plt.title("Accuracy per epoch")
-    plt.xlabel('Epochs')
-    plt.ylabel('Accuracy')
-    plt.legend()
-    plt.savefig(f'outputs/{output_folder}/accuracy_{model_name}_{current_datetime}.png')
-    plt.show()
-
-    # loss plots
-    plt.figure(figsize=(10, 7))
-    plt.plot(
-        epoch_count, avg_train_loss, color='orange', linestyle='-',
-        label='train'
-    )
-    plt.plot(
-        epoch_count, avg_val_loss, color='red', linestyle='-',
-        label='validation'
-    )
-    plt.title("Loss per epoch")
-    plt.xlabel('Epochs')
-    plt.ylabel('Loss')
-    plt.legend()
-    plt.savefig(f'outputs/{output_folder}/loss_{model_name}_{current_datetime}.png')
-    plt.show()
