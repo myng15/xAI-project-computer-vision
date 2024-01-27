@@ -116,6 +116,6 @@ if __name__ == '__main__':
     if visualize_embeds:
         visualize_embeddings(train_embeddings, train_labels, test_embeddings, test_labels,
                              output_folder, model_name, cp_datetime, optim_code=optim_code,
-                             method='t-SNE', n_components=2)
+                             method='t-SNE', plot_n_components=2)
 
 

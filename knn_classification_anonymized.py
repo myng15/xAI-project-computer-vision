@@ -20,9 +20,9 @@ parser.add_argument('-n', '--n_neighbors', type=int,
                     help='number of nearest neighbors for kNN classifier')
 parser.add_argument('-a', '--anonym_method', type=str,
                     help='name of the method used to anonymize the embeddings')
-parser.add_argument('-ns', '--noise_scale', type=float, default=0.1,
+parser.add_argument('-ns', '--noise_scale', type=float, default=None,
                     help='noise scale for anonymization')
-parser.add_argument('-nc', '--n_components', default=None,
+parser.add_argument('-nc', '--n_components', type=int, default=None,
                     help='number of PCA components for anonymization')
 parser.add_argument('-md', '--max_dist', type=float, default=0.5,
                     help='maximum distance between two samples for density-based clustering anonymization')
@@ -48,6 +48,7 @@ else:
 n_neighbors = args['n_neighbors']
 anonym_method = args['anonym_method']
 noise_scale = args['noise_scale']
+n_components = args['n_components']
 tuning = args['tuning']
 noise_scale_tuning = args['noise_scale_tuning']
 n_components_tuning = args['n_components_tuning']
@@ -92,9 +93,9 @@ if __name__ == '__main__':
     else:
         # Anonymize train and test embeddings
         train_embeddings_anonymized = anonymize_embeddings(train_embeddings, anonym_method,
-                                                           noise_scale=noise_scale)
+                                                           noise_scale=noise_scale, n_components=n_components)
         test_embeddings_anonymized = anonymize_embeddings(test_embeddings, anonym_method,
-                                                          noise_scale=noise_scale)
+                                                          noise_scale=noise_scale, n_components=n_components)
         print("ANONYMIZATION OF EMBEDDINGS FINISHED.")
 
         # Save anonymized embeddings and labels to a .npz file
@@ -114,5 +115,6 @@ if __name__ == '__main__':
         if visualize_embeds:
             visualize_embeddings(train_embeddings_anonymized, train_labels, test_embeddings_anonymized, test_labels,
                                  output_folder, model_name, cp_datetime, optim_code=optim_code,
-                                 anonymized=True, anonym_method=anonym_method, method='t-SNE', n_components=2)
+                                 anonymized=True, anonym_method=anonym_method, noise_scale=noise_scale, n_components=n_components,
+                                 method='t-SNE', plot_n_components=2)
 

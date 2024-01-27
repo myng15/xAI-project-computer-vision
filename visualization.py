@@ -114,22 +114,19 @@ def visualize_knn_results(model, test_dl, knn_classifier, classes,
     model.eval()
     dataiter = iter(test_dl)
     images, labels = next(dataiter)
+    device = get_available_device()
+    images = move_to_device(images, device)
 
-    # Calculate mean and std for normalization
+    # Calculate mean and std for denormalization
     mean = [round(m.item(), 4) for m in images.mean([0, 2, 3])]
     std = [round(s.item(), 4) for s in images.std([0, 2, 3])]
 
-    # Apply the transformations to each image in the batch
-    transformed_images = torch.stack([torch.tensor(denormalize(img.cpu().numpy(), mean, std)) for img in images])
-    device = get_available_device()
-    transformed_images = move_to_device(transformed_images, device)
-
     with torch.no_grad():
         if hasattr(model, 'get_embeddings') and callable(getattr(model, 'get_embeddings')):
-            embeddings = model.get_embeddings(transformed_images)
+            embeddings = model.get_embeddings(images)
         else:
             get_embeddings = nn.Sequential(*list(model.children())[:-1])
-            embeddings = get_embeddings(transformed_images)
+            embeddings = get_embeddings(images)
 
         flattened_embeddings = embeddings.view(embeddings.size(0), -1).cpu().numpy()
 
@@ -140,7 +137,7 @@ def visualize_knn_results(model, test_dl, knn_classifier, classes,
     fig = plt.figure(figsize=(25, 4))
     for idx in np.arange(20):
         ax = fig.add_subplot(2, int(20/2), idx+1, xticks=[], yticks=[])
-        image = transformed_images[idx].cpu().numpy()
+        image = images[idx].cpu().numpy()
         imshow(image, mean, std)
         ax.set_title("{} (True: {})".format(classes[predictions[idx]], classes[labels[idx]]),
                      color=("green" if predictions[idx] == labels[idx].item() else "red"))
@@ -153,16 +150,17 @@ def visualize_knn_results(model, test_dl, knn_classifier, classes,
 
 def visualize_embeddings(train_embeddings, train_labels, test_embeddings, test_labels,
                          output_folder, model_name, cp_datetime, optim_code='',
-                         anonymized=False, anonym_method='', method='t-SNE', n_components=2):
+                         anonymized=False, anonym_method='', noise_scale=None, n_components=None,
+                         method='t-SNE', plot_n_components=2):
     """
     Function to visualize train and test embedding databases.
     """
     if method == 't-SNE':
-        tsne = TSNE(n_components=n_components, perplexity=30, n_iter=300, verbose=0, random_state=42) # n_iter must be at least 250 (Default = 1000)
+        tsne = TSNE(n_components=plot_n_components, perplexity=30, n_iter=300, verbose=0, random_state=42) # n_iter must be at least 250 (Default = 1000)
         train_reduced_embeddings = tsne.fit_transform(train_embeddings)
         test_reduced_embeddings = tsne.fit_transform(test_embeddings)
     elif method == 'PCA':
-        pca = PCA(n_components=n_components)
+        pca = PCA(n_components=plot_n_components)
         train_reduced_embeddings = pca.fit_transform(train_embeddings)
         test_reduced_embeddings = pca.fit_transform(test_embeddings)
     else:
@@ -185,9 +183,18 @@ def visualize_embeddings(train_embeddings, train_labels, test_embeddings, test_l
     ax[1].set_xlabel(f'{method} Component 1')
     ax[1].set_ylabel(f'{method} Component 2')
 
+    if anonymized:
+        for axis in ax:
+            axis.set_xlim(-13, 13)
+            axis.set_ylim(-13, 13)
+
     # Save the plot
-    plt.savefig(f'embeddings/{output_folder}/embeddings' + (f'_anonymized' if anonymized else '')
-                + (f'_{anonym_method}' if anonym_method else '') + f'_{model_name}{optim_code}_{cp_datetime}.png')
+    plt.savefig(f'embeddings/{output_folder}/embeddings'
+                + (f'_anonymized' if anonymized else '')
+                + (f'_{anonym_method}' if anonym_method else '')
+                + (f'_{noise_scale}' if noise_scale else '')
+                + (f'_{n_components}' if n_components else '')
+                + f'_{model_name}{optim_code}_{cp_datetime}.png')
     plt.show()
     print('Visualization of Embeddings Saved.')
 
