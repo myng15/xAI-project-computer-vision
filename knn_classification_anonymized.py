@@ -113,6 +113,6 @@ if __name__ == '__main__':
         # Visualize train and test embeddings
         if visualize_embeds:
             visualize_embeddings(train_embeddings_anonymized, train_labels, test_embeddings_anonymized, test_labels,
-                                 output_folder, model_name, cp_datetime, optim_code=optim_code, anonymized='anonymized',
-                                 method='t-SNE', n_components=2)
+                                 output_folder, model_name, cp_datetime, optim_code=optim_code,
+                                 anonymized=True, anonym_method=anonym_method, method='t-SNE', n_components=2)
 

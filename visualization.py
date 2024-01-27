@@ -153,7 +153,7 @@ def visualize_knn_results(model, test_dl, knn_classifier, classes,
 
 def visualize_embeddings(train_embeddings, train_labels, test_embeddings, test_labels,
                          output_folder, model_name, cp_datetime, optim_code='',
-                         anonymized='', method='t-SNE', n_components=2):
+                         anonymized=False, anonym_method='', method='t-SNE', n_components=2):
     """
     Function to visualize train and test embedding databases.
     """
@@ -186,7 +186,8 @@ def visualize_embeddings(train_embeddings, train_labels, test_embeddings, test_l
     ax[1].set_ylabel(f'{method} Component 2')
 
     # Save the plot
-    plt.savefig(f'embeddings/{output_folder}/embeddings{anonymized}_{model_name}{optim_code}_{cp_datetime}.png')
+    plt.savefig(f'embeddings/{output_folder}/embeddings' + (f'_anonymized' if anonymized else '')
+                + (f'_{anonym_method}' if anonym_method else '') + f'_{model_name}{optim_code}_{cp_datetime}.png')
     plt.show()
     print('Visualization of Embeddings Saved.')
 
