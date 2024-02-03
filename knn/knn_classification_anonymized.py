@@ -1,9 +1,19 @@
+import sys
+import os
+
+# getting the name of the directory where the this file is present.
+current = os.path.dirname(os.path.realpath(__file__))
+# Getting the parent directory name where the current directory is present.
+parent = os.path.dirname(current)
+# adding the parent directory to the sys.path.
+sys.path.append(parent)
+
 from utils import get_available_device, seed_all
 from visualization import visualize_embeddings, plot_anonymization_accuracy_vs_error
-from anonymization import anonymize_embeddings
-from anonymization_evaluation import tune_anonymization_parameters, calculate_anonymization_metrics
-from anonymization_GAN.GAN_trainer import GANTrainer
-from knn_utils import train_knn_classifier
+from anonymization.anonymization_methods import anonymize_embeddings
+from anonymization.anonymization_evaluation import tune_anonymization_parameters, calculate_anonymization_metrics
+from anonymization.anonymization_GAN.GAN_trainer import GANTrainer
+from knn.knn_utils import train_knn_classifier
 
 import numpy as np
 import argparse
@@ -17,7 +27,7 @@ parser.add_argument('-o', '--optim_code', type=str, default='',
                     help='code of the optimization scheme used when training the model to be tested')
 parser.add_argument('-m', '--model_name', type=str,
                     help='name of model to be tested')
-parser.add_argument('-n', '--n_neighbors', type=int,
+parser.add_argument('--n_neighbors', type=int,
                     help='number of nearest neighbors for kNN classifier')
 parser.add_argument('--anonym_method', type=str,
                     help='name of the method used to anonymize the embeddings')
@@ -187,7 +197,8 @@ if __name__ == '__main__':
             embeddings=test_embeddings_anonymized, labels=test_labels_anonymized)
 
         # EVALUATE PERFORMANCE METRICS OF THE ANONYMIZATION METHOD
-        reconstruction_error_train, accuracy_loss_anonymized_test, accuracy_loss_original_test = (
+        reconstruction_error_train, accuracy_loss_anonymized_test, accuracy_loss_original_test, \
+        variance_retention, projection_robustness = (
             calculate_anonymization_metrics(train_embeddings, test_embeddings, train_labels, test_labels,
                                             train_embeddings_anonymized, test_embeddings_anonymized,
                                             train_labels_anonymized, test_labels_anonymized,
