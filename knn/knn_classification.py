@@ -1,9 +1,21 @@
 import torch
 
+import sys
+sys.path.append('..')
+
+import sys
+import os
+# getting the name of the directory where the this file is present.
+current = os.path.dirname(os.path.realpath(__file__))
+# Getting the parent directory name where the current directory is present.
+parent = os.path.dirname(current)
+# adding the parent directory to the sys.path.
+sys.path.append(parent)
+
 from models import get_model
 from utils import get_available_device, seed_all
 from datasets import get_normalized_cifar_datasets
-from knn_utils import create_data_loaders_knn, extract_embeddings, train_knn_classifier, evaluate_knn_classifier
+from knn.knn_utils import create_data_loaders_knn, extract_embeddings, train_knn_classifier, evaluate_knn_classifier
 from visualization import visualize_embeddings, visualize_knn_results
 
 import numpy as np
@@ -22,7 +34,7 @@ parser.add_argument('-b', '--batch_size', type=int,
                     help='number of samples per batch to load')
 parser.add_argument('-w', '--num_workers', type=int,
                     help='number of subprocesses to use for data loading')
-parser.add_argument('-n', '--n_neighbors', type=int,
+parser.add_argument('--n_neighbors', type=int,
                     help='number of nearest neighbors for kNN classifier')
 parser.add_argument('-ve', '--visualize_embeds', action="store_true",
                     help='visualize extracted train and test embeddings')
