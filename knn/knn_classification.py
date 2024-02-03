@@ -34,10 +34,7 @@ args = vars(parser.parse_args())
 num_classes = args['num_classes']
 model_name = args['model_name']
 cp_datetime = args['cp_datetime']
-if args['optim_code']:
-    optim_code = args['optim_code']
-else:
-    optim_code = ''
+optim_code = args['optim_code']
 batch_size = args['batch_size']
 num_workers = args['num_workers']
 n_neighbors = args['n_neighbors']
@@ -74,7 +71,7 @@ if __name__ == '__main__':
 
         # Evaluate KNN classifier on the test set
         knn_accuracy = evaluate_knn_classifier(knn_classifier, test_embeddings, test_labels)
-        print(f"KNN Classifier Accuracy on Test Set: {knn_accuracy * 100:.2f}%")
+        print(f"KNN Classifier Accuracy on Test Embeddings: {knn_accuracy * 100:.2f}%")
 
     else:
         # Load CIFAR dataset
@@ -105,7 +102,7 @@ if __name__ == '__main__':
 
         # Evaluate KNN classifier on the test set
         knn_accuracy = evaluate_knn_classifier(knn_classifier, test_embeddings, test_labels)
-        print(f"KNN Classifier Accuracy on Test Set: {knn_accuracy * 100:.2f}%")
+        print(f"KNN Classifier Accuracy on Test Embeddings: {knn_accuracy * 100:.2f}%")
 
         # Visualize sample test results
         if visualize_knn:
