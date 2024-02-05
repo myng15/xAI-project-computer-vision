@@ -1,6 +1,7 @@
 import torch
 import numpy as np
-from sklearn.cluster import DBSCAN
+from scipy.spatial.distance import cdist
+from sklearn.metrics.pairwise import euclidean_distances
 from sklearn.cluster import KMeans
 
 
@@ -22,13 +23,15 @@ def anonymize_embeddings_laplace(embeddings, noise_scale=0.1):
     Returns:
     - PyTorch tensor, anonymized embeddings
     """
-    laplace_noise = torch.tensor(np.random.laplace(loc=0.0, scale=noise_scale, size=embeddings.shape), dtype=torch.float32)
+    laplace_noise = torch.tensor(np.random.laplace(loc=0.0, scale=noise_scale, size=embeddings.shape),
+                                 dtype=torch.float32)
     anonymized_embeddings = embeddings + laplace_noise
     return anonymized_embeddings
 
 
 def anonymize_embeddings_gaussian(embeddings, noise_scale=0.1):
-    gaussian_noise = torch.tensor(np.random.normal(loc=0.0, scale=noise_scale, size=embeddings.shape), dtype=torch.float32)
+    gaussian_noise = torch.tensor(np.random.normal(loc=0.0, scale=noise_scale, size=embeddings.shape),
+                                  dtype=torch.float32)
     anonymized_embeddings = embeddings + gaussian_noise
     return anonymized_embeddings
 
@@ -43,9 +46,13 @@ def anonymize_embeddings_hashing(embeddings, salt="secret_salt"):
     return hashed_embeddings
 
 
-def anonymize_embeddings_pca(embeddings, n_components=None):
-    #pca = PCA(n_components=n_components)
-    #return torch.tensor(pca.fit_transform(embeddings.cpu().numpy()), dtype=torch.float32)
+def anonymize_embeddings_pca(embeddings, n_components):
+    if n_components is None:
+        print("Anonymization will have no effect if n_components is None.")
+        return
+
+    # pca = PCA(n_components=n_components)
+    # return torch.tensor(pca.fit_transform(embeddings.cpu().numpy()), dtype=torch.float32)
 
     # Reshape to (batch_size, num_features) where num_features is 3 * 32 * 32
     flattened_embeddings = embeddings.view(embeddings.size(0), -1)
@@ -58,7 +65,8 @@ def anonymize_embeddings_pca(embeddings, n_components=None):
     centered_embeddings_complex = centered_embeddings.to(torch.complex64)
 
     # Calculate Covariance Matrix
-    covariance_matrix = torch.matmul(centered_embeddings_complex.t(), centered_embeddings_complex) / centered_embeddings_complex.size(0)
+    covariance_matrix = torch.matmul(centered_embeddings_complex.t(),
+                                     centered_embeddings_complex) / centered_embeddings_complex.size(0)
 
     # Eigenvalue Decomposition
     eigvalues_complex, eigvectors_complex = torch.linalg.eig(covariance_matrix)
@@ -88,7 +96,9 @@ def anonymize_embeddings_density_based(embeddings, max_dist=0.5, min_samples=5, 
     embeddings = embeddings.numpy()
 
     # Compute pairwise distances between embeddings
-    pairwise_distances = np.linalg.norm(embeddings[:, None] - embeddings, axis=-1)
+    # pairwise_distances = np.linalg.norm(embeddings[:, None] - embeddings, axis=-1)
+    # pairwise_distances = cdist(embeddings, embeddings)
+    pairwise_distances = euclidean_distances(embeddings, embeddings)
 
     # Initialize an array to store cluster labels (-1 for noise points)
     cluster_labels = np.full(embeddings.shape[0], -1, dtype=int)
@@ -118,6 +128,7 @@ def anonymize_embeddings_density_based(embeddings, max_dist=0.5, min_samples=5, 
 
         cluster_labels[point_index] = cluster_index
         neighbors = np.where(pairwise_distances[point_index] <= max_dist)[0]
+
         for neighbor_index in neighbors:
             if cluster_labels[neighbor_index] == -1:
                 cluster_labels[neighbor_index] = cluster_index
@@ -125,13 +136,15 @@ def anonymize_embeddings_density_based(embeddings, max_dist=0.5, min_samples=5, 
         cluster_index += 1
 
     # Generate random perturbations for core points
-    gaussian_noise = np.random.normal(loc=0.0, scale=noise_scale, size=embeddings.shape)
+    # gaussian_noise = np.random.normal(loc=0.0, scale=noise_scale, size=embeddings.shape)
 
     # Apply perturbations to core points and nearby samples
     anonymized_embeddings = embeddings.copy()
     for cluster_id in range(cluster_index):
         cluster_indices = (cluster_labels == cluster_id)
-        anonymized_embeddings[cluster_indices] += gaussian_noise[cluster_indices]
+        # anonymized_embeddings[cluster_indices] += gaussian_noise[cluster_indices]
+        noise = np.random.normal(loc=0.0, scale=noise_scale, size=anonymized_embeddings[cluster_indices].shape)
+        anonymized_embeddings[cluster_indices] += noise
 
     return torch.tensor(anonymized_embeddings, dtype=torch.float32)
 
@@ -170,7 +183,8 @@ def anonymize_embeddings_kmeans(embeddings, labels, n_clusters=5000, assign_labe
 
         # Add Laplace noise to the aggregated embedding if desired
         if noise_scale > 0.0:
-            aggregated_embedding += np.random.laplace(loc=0.0, scale=noise_scale, size=aggregated_embedding.shape)
+            noise = np.random.laplace(loc=0.0, scale=noise_scale, size=aggregated_embedding.shape)
+            aggregated_embedding += noise
 
         # Assigning labels to aggregated embedding
         if assign_labels == 'centroid':
@@ -189,8 +203,10 @@ def anonymize_embeddings_kmeans(embeddings, labels, n_clusters=5000, assign_labe
     aggregated_embeddings = np.array(aggregated_embeddings_list)
     aggregated_labels = np.array(aggregated_labels_list)
 
-    return torch.tensor(aggregated_embeddings, dtype=torch.float32), torch.tensor(aggregated_labels, dtype=torch.int)
-    #return aggregated_embeddings, aggregated_labels
+    aggregated_embeddings = torch.from_numpy(aggregated_embeddings)
+    aggregated_labels = torch.from_numpy(aggregated_labels)
+
+    return aggregated_embeddings, aggregated_labels
 
 
 def anonymize_embeddings_gan(generator, num_embeddings_to_generate, latent_dim, device):
@@ -203,7 +219,8 @@ def anonymize_embeddings_gan(generator, num_embeddings_to_generate, latent_dim, 
 def anonymize_embeddings(embeddings, labels, method,
                          noise_scale, n_components=None,
                          max_dist=None, min_samples=None,
-                         n_clusters=10, assign_labels='majority', generator=None, batch_size=None, latent_dim=None, device="cpu"):
+                         n_clusters=10, assign_labels='majority', generator=None, batch_size=None, latent_dim=None,
+                         device="cpu"):
     if isinstance(embeddings, np.ndarray):
         embeddings = torch.tensor(embeddings, dtype=torch.float32, device="cpu")
     if method == 'random':
@@ -219,9 +236,11 @@ def anonymize_embeddings(embeddings, labels, method,
     elif method == 'pca':
         return anonymize_embeddings_pca(embeddings, n_components=n_components)
     elif method == 'density_based':
-        return anonymize_embeddings_density_based(embeddings, max_dist=max_dist, min_samples=min_samples, noise_scale=noise_scale)
+        return anonymize_embeddings_density_based(embeddings, max_dist=max_dist, min_samples=min_samples,
+                                                  noise_scale=noise_scale)
     elif method == 'kmeans':
-        return anonymize_embeddings_kmeans(embeddings, labels, n_clusters=n_clusters, assign_labels=assign_labels, noise_scale=noise_scale)
+        return anonymize_embeddings_kmeans(embeddings, labels, n_clusters=n_clusters, assign_labels=assign_labels,
+                                           noise_scale=noise_scale)
     elif method == 'gan':
         return anonymize_embeddings_gan(generator, batch_size, latent_dim, device)
     else:
