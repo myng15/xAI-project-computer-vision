@@ -154,7 +154,8 @@ if __name__ == "__main__":
     # Calculate average accuracy and average forgetting
     avg_training_time = online_learner.average_training_time(training_time_list)
     avg_inference_time = online_learner.average_inference_time(inference_time_list)
-    avg_acc_ci, avg_forgetting_ci, avg_bwtp_ci, avg_fwt_ci = online_learner.compute_end_performance_ci(accuracies)
+    avg_acc_ci, avg_forgetting_ci, avg_bwtp_ci, avg_fwt_ci, corr_dict = online_learner.compute_end_performance_ci(accuracies)
+
     if generative_replay:
         max_fid = np.max(np.abs(fid_train_list))
         if max_fid != 0:
@@ -172,5 +173,8 @@ if __name__ == "__main__":
     print(f"Average Forgetting CI: {avg_forgetting_ci[0] * 100:.2f}% \u00B1 {avg_forgetting_ci[1] * 100:.2f}%")
     print(f"Average Positive Backward Transfer CI: {avg_bwtp_ci[0] * 100:.2f}% \u00B1 {avg_bwtp_ci[1] * 100:.2f}%")
     print(f"Average Forward Transfer CI: {avg_fwt_ci[0] * 100:.2f}% \u00B1 {avg_fwt_ci[1] * 100:.2f}%")
+    for key, value in corr_dict.items():
+        print(f"{key} Correlation: {value:.4f}")
+
     print(f"Average Training Time: {avg_training_time:.4f} seconds")
     print(f"Average Inference Time: {avg_inference_time:.4f} seconds")

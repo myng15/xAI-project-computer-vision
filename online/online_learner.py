@@ -6,6 +6,7 @@ from sklearn.neighbors import KNeighborsClassifier
 from sklearn.metrics import accuracy_score
 import numpy as np
 import scipy.stats as stats
+from scipy.stats import pearsonr
 import time
 import random
 
@@ -20,6 +21,7 @@ parent = os.path.dirname(current)
 # adding the parent directory to the sys.path.
 sys.path.append(parent)
 
+from utils import seed_all
 from models import FullyConnectedClassifier
 from anonymization.anonymization_GAN.GAN_trainer import GANTrainer
 from anonymization.anonymization_evaluation import calculate_fid
@@ -196,27 +198,34 @@ class OnlineLearner:
         return np.array(batch_embeddings), np.array(batch_labels)
 
     def create_replay_data(self, memory_sample_percentage, real_batch_embeddings, real_batch_labels):
+        # set seed
+        seed_all(42)
+
+        memory_data = [(em, label) for em, label in zip(self.memory["embeddings"], self.memory["labels"])]
+
         # Create replay data by combining real data and synthetic data from memory
         if len(self.memory["embeddings"]) > 0:
             if memory_sample_percentage == 1.0:
-                memory_embeddings = self.memory["embeddings"]
-                memory_labels = self.memory["labels"]
+                # Use all memory data
+                replay_data = memory_data
             else:
                 # Sample from memory buffer to augment training batch
-                sample_size = int(np.floor(len(self.memory["embeddings"]) * memory_sample_percentage))
-                memory_embeddings = random.sample(self.memory["embeddings"], sample_size)
+                sample_size = int(np.floor(len(memory_data) * memory_sample_percentage))
+                replay_data = random.sample(memory_data, sample_size)
 
-                # Get the indices of the sampled embeddings in the original embeddings list
-                #sampled_indices = [self.memory["embeddings"].index(em) for em in memory_embeddings]
-                sampled_indices = [next(i for i, x in enumerate(self.memory["embeddings"])
-                                        if np.array_equal(x, em)) for em in memory_embeddings]
-                # Retrieve the corresponding labels using the sampled indices
-                memory_labels = [self.memory["labels"][idx] for idx in sampled_indices]
+            # Unpack the sampled data
+            memory_embeddings, memory_labels = zip(*replay_data)
 
             # Generate batch with a mix of real and synthetic data
             replay_batch_embeddings = np.concatenate(
                 (np.array(memory_embeddings), real_batch_embeddings))
             replay_batch_labels = np.concatenate((np.array(memory_labels), real_batch_labels))
+
+            # Shuffle the concatenated mix
+            shuffle_indices = np.random.permutation(len(replay_batch_embeddings))
+            replay_batch_embeddings = replay_batch_embeddings[shuffle_indices]
+            replay_batch_labels = replay_batch_labels[shuffle_indices]
+
         else:
             replay_batch_embeddings = real_batch_embeddings
             replay_batch_labels = real_batch_labels
@@ -224,7 +233,7 @@ class OnlineLearner:
         return replay_batch_embeddings, replay_batch_labels
 
     def augment_synthetic_data_memory(self, real_batch_embeddings, batch_size,
-                                      latent_dim,n_epochs_gan, batch_size_gan,
+                                      latent_dim, n_epochs_gan, batch_size_gan,
                                       replay_batch_embeddings, replay_batch_labels):
         # Train GAN on the incoming data to generate synthetic data that mimic the real data
         _, _, _, _ = self.gan_trainer.fit(real_batch_embeddings, batch_size_gan, n_epochs_gan, latent_dim)
@@ -289,27 +298,42 @@ class OnlineLearner:
             forgetting_per_round.append(np.mean(max_acc_previous - accuracies[i]))
         t_coef = stats.t.ppf((1 + 0.95) / 2, len(forgetting_per_round) - 1)  # t coefficient for 95% CI
         avg_forgetting = (np.mean(forgetting_per_round), t_coef * stats.sem(forgetting_per_round))
-        return avg_forgetting
+        return forgetting_per_round, avg_forgetting
 
     def compute_end_positive_backward_transfer_ci(self, accuracies):
         bwt_per_round = [max(accuracies[i - 1] - accuracies[i], 0) for i in range(1, len(accuracies))]
         t_coef = stats.t.ppf((1 + 0.95) / 2, len(bwt_per_round) - 1)  # t coefficient for 95% CI
         avg_bwtp = (np.mean(bwt_per_round), t_coef * stats.sem(bwt_per_round))
 
-        return avg_bwtp
+        return bwt_per_round, avg_bwtp
 
     def compute_end_forward_transfer_ci(self, accuracies):
         fwt_per_round = [max(accuracies[i] - accuracies[i - 1], 0) for i in range(1, len(accuracies))]
         t_coef = stats.t.ppf((1 + 0.95) / 2, len(fwt_per_round) - 1)  # t coefficient for 95% CI
         avg_fwt = (np.mean(fwt_per_round), t_coef * stats.sem(fwt_per_round))
-        return avg_fwt
+        return fwt_per_round, avg_fwt
+
+    def compute_correlation(self, forgetting, bwtp, fwt):
+        # Compute Pearson correlation coefficients
+        forgetting_bwtp_corr, _ = pearsonr(forgetting, bwtp)
+        forgetting_fwt_corr, _ = pearsonr(forgetting, fwt)
+        bwtp_fwt_corr, _ = pearsonr(bwtp, fwt)
+
+        return {
+            "Forgetting-BWTP": forgetting_bwtp_corr,
+            "Forgetting-FWT": forgetting_fwt_corr,
+            "BWTP-FWT": bwtp_fwt_corr
+        }
 
     def compute_end_performance_ci(self, accuracies):
         avg_acc_ci = self.compute_end_accuracy_ci(accuracies)
-        avg_forgetting_ci = self.compute_end_forgetting_ci(accuracies)
-        avg_bwtp_ci = self.compute_end_positive_backward_transfer_ci(accuracies)
-        avg_fwt_ci = self.compute_end_forward_transfer_ci(accuracies)
-        return avg_acc_ci, avg_forgetting_ci, avg_bwtp_ci, avg_fwt_ci
+        forgetting_per_round, avg_forgetting_ci = self.compute_end_forgetting_ci(accuracies)
+        bwt_per_round, avg_bwtp_ci = self.compute_end_positive_backward_transfer_ci(accuracies)
+        fwt_per_round, avg_fwt_ci = self.compute_end_forward_transfer_ci(accuracies)
+
+        corr_dict = self.compute_correlation(forgetting_per_round, bwt_per_round, fwt_per_round)
+
+        return avg_acc_ci, avg_forgetting_ci, avg_bwtp_ci, avg_fwt_ci, corr_dict
 
     def average_training_time(self, training_time_list):
         return np.mean(training_time_list)
