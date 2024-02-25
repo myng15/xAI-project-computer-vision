@@ -44,7 +44,6 @@ def get_normalized_cifar_datasets(num_classes):
 
     # Calculate mean and std for normalization
     mean_train, std_train = calculate_mean_std(train_data)
-    mean_test, std_test = calculate_mean_std(test_data)
 
     # Load CIFAR dataset with normalization
     train_transform = transforms.Compose([
@@ -54,7 +53,7 @@ def get_normalized_cifar_datasets(num_classes):
 
     test_transform = transforms.Compose([
         transforms.ToTensor(),
-        transforms.Normalize(mean_test, std_test)
+        transforms.Normalize(mean_train, std_train) # NOT mean_test, std_test
     ])
 
     train_data, test_data = get_cifar_datasets(num_classes, train_transform=train_transform, test_transform=test_transform)

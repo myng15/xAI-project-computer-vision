@@ -1,5 +1,4 @@
 import torch
-import torchvision.transforms as transforms
 
 import numpy as np
 import argparse
