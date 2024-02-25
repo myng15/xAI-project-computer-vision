@@ -1,11 +1,8 @@
 import torch
 import torch.nn as nn
 import torch.optim as optim
-from torchvision.utils import save_image, make_grid
 
-import os
 import numpy as np
-import matplotlib.pyplot as plt
 
 import sys
 import os
@@ -42,14 +39,6 @@ class GANTrainer:
         (Re-)Initialize weights and bias terms to certain layers in a model.
         :param m: A module or layer in a network
         """
-
-        #############################################################################
-        #                            START OF YOUR CODE                             #
-        # TODO:                                                                     #
-        #    (Re-)Initialize weights and bias to convolutional, convolutional-      #
-        #    transpose, linear and batch normalization (2d) layers as specified by  #
-        #    the original DCGAN paper
-        #############################################################################
         # Set mean and std as specified by the original DCGAN paper
         mean = 0.0
         std = 0.02
@@ -159,27 +148,6 @@ class GANTrainer:
 
         return g_loss
 
-    def save_samples(self, index, sample_size, latent_dim, mean, std, generated_sample_dir='./outputs/', show=True):
-        # Sample a fixed set of latent (noise) input vectors to the generator. These are images that are held
-        # constant throughout training, and allow us to see how the individual generated images
-        # evolve over time as we train the model
-        latent = torch.randn(sample_size, latent_dim, 1, 1, device=self.device)
-        fake_images = self.generator(latent)
-
-        # denormalize pixel values
-        mean_tensor = torch.tensor(mean, device=self.device).view(3, 1, 1)
-        std_tensor = torch.tensor(std, device=self.device).view(3, 1, 1)
-        fake_images = fake_images * std_tensor + mean_tensor
-
-        fake_filename = 'generated-images-{0:0=4d}.png'.format(index)
-        save_image(fake_images, os.path.join(generated_sample_dir, fake_filename), nrow=8)
-        print('Saving', fake_filename)
-        if show:
-            fig, ax = plt.subplots(figsize=(8, 4))
-            ax.set_xticks([])
-            ax.set_yticks([])
-            ax.imshow(make_grid(fake_images.cpu().detach(), nrow=8).permute(1, 2, 0))
-
     def save_checkpoint(self, g_losses, d_losses, real_scores, fake_scores, path):
         print(f'Saving checkpoint {path}')
         torch.save({
@@ -221,7 +189,6 @@ class GANTrainer:
 
             num_batches = int(np.floor(len(real_embeddings_database) / batch_size))
 
-            #for batch_i, real_images in enumerate(train_loader):
             for i in range(0, len(real_embeddings_database), batch_size):
                 real_images = torch.tensor(real_embeddings_database[i:i + batch_size], device=self.device)
 
@@ -255,9 +222,6 @@ class GANTrainer:
             # Log average losses & scores
             print("Epoch [{:3d}/{:3d}] | Discriminator loss: {:.4f} | Generator loss: {:.4f} | Real score: {:.4f} | Fake score: {:.4f}".format(
                     epoch + 1, n_epochs, epoch_d_loss, epoch_g_loss, epoch_real_score, epoch_fake_score))
-
-            # Save generated images
-            #self.save_samples(epoch + 1, sample_size, latent_dim, mean, std, show=show)
 
         return g_losses, d_losses, real_scores, fake_scores
 
