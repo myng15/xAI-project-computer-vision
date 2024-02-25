@@ -76,7 +76,7 @@ def calculate_variance_retention(original_embeddings, anonymized_embeddings, ano
 def calculate_projection_robustness(original_embeddings, anonymized_embeddings):
     """
     Calculate the projection robustness between original and anonymized embeddings.
-
+    Lower value means more robustness.
     Parameters:
     - original_embeddings: Numpy array of shape (num_embeddings, embedding_dimension)
                            containing original embeddings.
@@ -131,7 +131,19 @@ def check_overlapping_embeddings(original_embeddings, anonymized_embeddings):
     # Check for overlapping embeddings
     overlapping_embeddings = original_set.intersection(anonymized_set)
 
-    return overlapping_embeddings
+    # Check for overlapping feature elements
+    # At the moment not implemented due to long computation time
+    # overlapping_features = set()
+    #
+    # for original_embedding in original_set:
+    #     for anonymized_embedding in anonymized_set:
+    #         # Check if any element in the original embedding is found in the anonymized embedding
+    #         #if any(element in anonymized_embedding for element in original_embedding):
+    #         if set(original_embedding).intersection(anonymized_embedding):
+    #             overlapping_features.add(original_embedding)
+    #             break  # Once a match is found, move to the next original embedding
+
+    return overlapping_embeddings #, overlapping_features
 
 
 def tune_anonymization_parameters(train_embeddings, test_embeddings, train_labels, test_labels, n_neighbors,
