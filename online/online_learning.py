@@ -164,7 +164,6 @@ if __name__ == "__main__":
             normalized_fid_train_list = fid_train_list
         avg_fid_train = np.mean(normalized_fid_train_list)
 
-
     print('-' * 50)
     print("KNN Classifier in Online Domain Incremental setting: ")
     if generative_replay:
