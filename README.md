@@ -1,6 +1,6 @@
 # Explainable AI Project: Anonymization and Online Learning Of Image Embeddings
 
-This project aims to evaluate different anonymization and online continual learning techniques on CIFAR10/CIFAR100 image embeddings. Through the experiments, we also aim to explore benefits of working with feature embeddings (instead of raw data), especially towards better explainability of the models and techniques employed.
+This project aims to evaluate different anonymization and online continual learning techniques on CIFAR10/CIFAR100 image embeddings. Through the experiments, we also aim to explore benefits of working with feature embeddings (instead of natural images), especially towards better explainability of the models and techniques employed.
 
 ## Table of contents
 
@@ -10,12 +10,12 @@ This project aims to evaluate different anonymization and online continual learn
 * [Usage](#usage)
 * [Experiment results](#experiment-results)
 * [Known issues and limitations](#known-issues-and-limitations)
+* [Contact](#contact)
 
 
 ## Introduction
 
-This project aims to investigate the effectiveness of the k-Nearest Neighbors (kNN) algorithm using features extracted by different Convolutional Neural Network (CNN) architectures as well as foundation models such as DINOv2. In the first stage, our primary objective was to determine how the source of feature extraction influences the accuracy of kNN in classifying images from the CIFAR-10 and CIFAR-100 datasets. In the second stage, we carried out experiments to explore suitable methods to anonymize feature embeddings, which is becoming an important procedure when collaborative machine learning requires privacy preservation of local data. Our research questions focused on how kNN complements deep neural networks in classification tasks, especially in special applications such as anonymized or online continual settings. Through studying the capability of kNN for image classification tasks using deep learning representations, we aim to provide insights into optimization possibilities. These findings can inspire further research on more efficient and robust kNN-based approaches, potentially tackling their intrinsic limitations as well as overcoming drawbacks of deep neural networks in classification scenarios.
-
+This project aims to investigate the empirical performance in image classification tasks of the k-Nearest Neighbors (kNN) algorithm using features extracted by different Convolutional Neural Network (CNN) architectures as well as foundation models such as DINOv2. This endeavor arises from the consideration that the use of feature embeddings as well as the kNN classifier can enhance explainability and adaptability of machine learning models, especially in special applications such as online continual learning or privacy-preserving collaborative settings. In the first stage, our primary objective was to determine how the source of feature extraction influences the accuracy of kNN in classifying images from the CIFAR-10 and CIFAR-100 datasets. In the second stage, we carried out experiments to explore suitable methods to anonymize feature embeddings, which is becoming an important procedure when collaborative machine learning requires privacy preservation of local data. Our research questions focused on how well empirically feature embeddings (instead of the underlying image data) can be used and how well kNN can complement deep neural networks in classification tasks. Through studying the capability of kNN for image classification tasks using deep learning representations, we aim to provide insights into optimization possibilities. These findings may inspire further research on more efficient and robust kNN-based approaches using embeddings, potentially tackling their intrinsic limitations as well as overcoming drawbacks of deep neural networks in classification scenarios.
 ## Installation
 
 ### Requirements:
@@ -242,4 +242,7 @@ Higher accuracy values or lower accuracy loss values are an indicator of better 
 - Metrics for evaluating anonymization methods are still limited due to difficulty in comparing anonymized embeddings against original embeddings (at least using simple calculations) and across different anonymization methods
 - Further consideration is to be given to the effectiveness of online learning using feature embeddings and non-parametric classifiers such as kNN, e.g. the need to develop a more effective GAN model for synthesizing embeddings (not raw image data as usually is the norm), as the experiments show empirically that the quality of synthetic embeddings decides how much generative replay improves or impairs online incremental learning of embeddings.
 
+## Contact
+My Nguyen (hanh-huyen-my.nguyen@stud.uni-bamberg.de)
 
+Dominic Liebel (dominic-harold.liebel@stud.uni-bamberg.de)
