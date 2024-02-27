@@ -18,6 +18,15 @@ from utils import get_available_device, move_to_device
 def save_plots(num_classes, current_datetime, model_name, epochs, results, optim_code='', plot_lrs=False):
     """
     Function to save the loss and accuracy plots to disk.
+
+    Parameters:
+    - num_classes: 10 -> the model to be tested is trained on CIFAR-10; 100 -> CIFAR-100
+    - current_datetime: datetime of the current checkpoint of training the selected model
+    - model_name (str): CNN model currently being trained
+    - epochs (int): number of training epochs for the current model checkpoint
+    - results (list): training results of all epochs (list of average train/validation loss and accuracy of each epoch)
+    - optim_code (str): code indicating all optimizations applied (compared to the selected default optimizations)
+    - plot_lrs (bool): whether plot of learning rate scheduling is to be generated
     """
 
     # Training Loss
@@ -114,6 +123,15 @@ def visualize_knn_results(model, test_dl, knn_classifier, classes,
                           output_folder, model_name, cp_datetime, optim_code):
     """
     Function to visualize a test batch of images that are embedded by the specified model and classified by kNN.
+
+    Parameters:
+    - model (nn.Module): neural network model used for feature extraction
+    - test_dl (DataLoader): CIFAR test data loader
+    - knn_classifier (KNeighborsClassifier): kNN classifier that has been fitted to the train data to be now used on test embeddings
+    - output_folder (str): cifar10 or cifar100
+    - model_name (str): CNN model used to extract embeddings
+    - cp_datetime (str): datetime when the selected checkpoint of training the selected model was saved
+    - optim_code (str): code indicating all optimizations applied (compared to the selected default optimizations)
     """
     model.eval()
     dataiter = iter(test_dl)
@@ -160,6 +178,24 @@ def visualize_embeddings(train_embeddings, train_labels, test_embeddings, test_l
                          method='t-SNE', plot_n_components=2):
     """
     Function to visualize train and test embedding databases.
+
+    Parameters:
+    - train_embeddings, train_labels, test_embeddings, test_labels (Numpy array or PyTorch tensor): train/test embeddings/labels to be visualized
+    - output_folder (str): cifar10 or cifar100
+    - model_name (str): CNN model used to extract embeddings
+    - cp_datetime (str): datetime when the selected checkpoint of training the selected model was saved
+    - optim_code (str): code indicating all optimizations applied (compared to the selected default optimizations)
+    - anonymized (bool): whether the embeddings to be visualized are original or anonymized
+    - anonym_method (str): anonymization method to be tested.
+    - noise_scale (float): scale parameter for random noise
+    - n_components (int): number of PCA components for anonymization
+    - max_dist (float): maximum distance between two samples for one to be considered as in the neighborhood of the other
+    - min_samples (int): the number of samples in a neighborhood for a point to be considered as a core point
+    - n_clusters (int): number of clusters to form (must be less than number of embeddings)
+    - assign_labels (str): determines how to assign labels to aggregated embeddings.
+                     Options: 'majority', 'centroid'
+    - method (str): type of plot used to visualize the embeddings (t-SNE or PCA)
+    - plot_n_components (int): number of components for dimensionality reduction during t-SNE/PCA visualization
     """
     if method == 't-SNE':
         tsne = TSNE(n_components=plot_n_components, perplexity=30, n_iter=300, verbose=0,
@@ -246,7 +282,8 @@ def visualize_embeddings(train_embeddings, train_labels, test_embeddings, test_l
 def plot_anonymization_accuracy_vs_error(output_folder, model_name, cp_datetime, optim_code,
                                          anonym_method, noise_scale_tuning,
                                          max_dist_tuning, min_samples_tuning, n_clusters_tuning, assign_labels_tuning,
-                                         reconstruction_errors_train,
+                                         n_epochs_tuning,
+                                         reconstruction_error_train_list,
                                          accuracy_losses, test_set='Anonymized Test Embeddings'):
     """
     Plot accuracy loss vs. reconstruction error with annotations.
@@ -258,7 +295,6 @@ def plot_anonymization_accuracy_vs_error(output_folder, model_name, cp_datetime,
     - optim_code (str): Code indicating all optimizations applied (compared to the selected default optimizations)
     - anonym_method (str): Anonymization method to be tested.
     - noise_scale_tuning (list): List of all noise_scale values.
-    - n_components_tuning (list): List of all n_components values.
     - max_dist_tuning (list): List of all max_dist values.
     - min_samples_tuning (list): List of all min_samples values.
     - n_clusters_tuning (list): List of all n_clusters values.
@@ -270,14 +306,14 @@ def plot_anonymization_accuracy_vs_error(output_folder, model_name, cp_datetime,
     # Plotting for each combination
     plt.figure(figsize=(12, 6))
     # Plot reconstruction errors of train embeddings
-    plt.plot(reconstruction_errors_train, accuracy_losses, marker='o', color='blue', label='Train Set')
+    plt.plot(reconstruction_error_train_list, accuracy_losses, marker='o', color='blue', label='Train Set')
 
     plt.xlabel('Reconstruction Error')
     plt.ylabel('Accuracy Loss (%)')
     plt.title(f'Accuracy Loss on {test_set} vs. Reconstruction Error')
     plt.suptitle(f'Anonymization Method: {anonym_method}, Model: {model_name}')
 
-    if all(element is None for element in reconstruction_errors_train):
+    if all(element is None for element in reconstruction_error_train_list):
         print("This anonymization method does not support the reconstruction error metrics.")
         return
 
@@ -286,13 +322,7 @@ def plot_anonymization_accuracy_vs_error(output_folder, model_name, cp_datetime,
     if anonym_method == "pca":
         print("This anonymization method does not support visualizing accuracy loss vs. reconstruction error.")
         return
-    #     for error_train, error_test, acc_loss, n_components in zip(
-    #             reconstruction_errors_train, reconstruction_errors_test, accuracy_losses, n_components_tuning):
-    #         # Create annotation texts for data points
-    #         plt.text(error_train, acc_loss, f'(n_components={n_components})', fontsize=7, ha='left', va='bottom')
-    #         plt.text(error_test, acc_loss, f'(n_components={n_components})', fontsize=7, ha='left', va='bottom')
 
-    # elif anonym_method == "density-based":
     if anonym_method == "density-based":
         tuning_parameters = []
         for max_dist in max_dist_tuning:
@@ -301,7 +331,7 @@ def plot_anonymization_accuracy_vs_error(output_folder, model_name, cp_datetime,
                     tuning_parameters.append((max_dist, min_samples, noise_scale))
 
         for error_train, acc_loss, (max_dist, min_samples, noise_scale) in zip(
-                reconstruction_errors_train, accuracy_losses, tuning_parameters):
+                reconstruction_error_train_list, accuracy_losses, tuning_parameters):
             # Create annotation texts for data points
             anno_text = textwrap.fill(f'(max_dist={max_dist}, min_samples={min_samples}, noise_scale={noise_scale})',
                                       width=30)
@@ -317,18 +347,24 @@ def plot_anonymization_accuracy_vs_error(output_folder, model_name, cp_datetime,
                     tuning_parameters.append((n_clusters, assign_labels, noise_scale))
 
         for error_train, acc_loss, (n_clusters, assign_labels, noise_scale) in zip(
-                reconstruction_errors_train, accuracy_losses, tuning_parameters):
+                reconstruction_error_train_list, accuracy_losses, tuning_parameters):
             # Create annotation texts for data points
             anno_text = textwrap.fill(
                 f'(n_clusters={n_clusters}, assign_labels={assign_labels}, noise_scale={noise_scale})',
                 width=30)
             plt.text(error_train, acc_loss, anno_text, fontsize=7, ha='left', va='bottom')
 
+    elif anonym_method == "gan":
+        for error_train, acc_loss, n_epochs in zip(
+                reconstruction_error_train_list, accuracy_losses, n_epochs_tuning):
+            # Create annotation texts for data points
+            plt.text(error_train, acc_loss, f'(n_epochs={n_epochs})', fontsize=8, ha='left', va='bottom')
+
     else:
         for error_train, acc_loss, noise_scale in zip(
-                reconstruction_errors_train, accuracy_losses, noise_scale_tuning):
+                reconstruction_error_train_list, accuracy_losses, noise_scale_tuning):
             # Create annotation texts for data points
-            plt.text(error_train, acc_loss, f'(noise_scale={noise_scale})', fontsize=7, ha='left', va='bottom')
+            plt.text(error_train, acc_loss, f'(noise_scale={noise_scale})', fontsize=8, ha='left', va='bottom')
 
     # Save the plot
     plt.savefig(
@@ -338,3 +374,208 @@ def plot_anonymization_accuracy_vs_error(output_folder, model_name, cp_datetime,
 
     plt.show()
 
+
+def plot_anonymization_accuracy_vs_variance(output_folder, model_name, cp_datetime, optim_code,
+                                            anonym_method, noise_scale_tuning, n_components_tuning,
+                                            max_dist_tuning, min_samples_tuning, n_clusters_tuning,
+                                            assign_labels_tuning,
+                                            n_epochs_tuning,
+                                            variance_retention_list,
+                                            accuracy_losses, test_set='Anonymized Test Embeddings',
+                                            variance_set='Train'):
+    """
+    Plot accuracy loss vs. variance retention with annotations.
+
+    Parameters:
+    - output_folder (str): cifar10 or cifar100
+    - model_name (str): CNN model used to extract embeddings
+    - cp_datetime (str): Datetime when the selected checkpoint of training the selected model was saved
+    - optim_code (str): Code indicating all optimizations applied (compared to the selected default optimizations)
+    - anonym_method (str): Anonymization method to be tested.
+    - noise_scale_tuning (list): List of all noise_scale values.
+    - n_components_tuning (list): List of all n_components values.
+    - max_dist_tuning (list): List of all max_dist values.
+    - min_samples_tuning (list): List of all min_samples values.
+    - n_clusters_tuning (list): List of all n_clusters values.
+    - assign_labels_tuning (list): List of all assign_labels values.
+    - variance_retention_list (list): List of variance retention values of anonymized train embeddings.
+    - accuracy_losses (list): List of kNN accuracy losses on the selected test set.
+    - test_set (str): Test set that the kNN classifier classifies
+    - variance_set (str): Embedding set whose variance retention values are visualized
+    """
+    # Plotting for each combination
+    plt.figure(figsize=(12, 6))
+    # Plot variance retention of anonymized embeddings
+    plt.plot(variance_retention_list, accuracy_losses, marker='o', color='blue')
+
+    plt.xlabel('Variance Retention')
+    plt.ylabel('Accuracy Loss (%)')
+    plt.title(f'Accuracy Loss on {test_set} vs. Variance Retention of Anonymized {variance_set} Embeddings')
+    plt.suptitle(f'Anonymization Method: {anonym_method}, Model: {model_name}')
+
+    # Add text annotations for each data point
+
+    if anonym_method == "pca" and "Original" in test_set:
+        print(
+            f"This anonymization method does not support visualizing accuracy loss on {test_set} vs. variance retention.")
+        return
+
+    if anonym_method == "pca" and "Anonymized" in test_set:
+        for var_retention, acc_loss, n_components in zip(
+                variance_retention_list, accuracy_losses, n_components_tuning):
+            # Create annotation texts for data points
+            plt.text(var_retention, acc_loss, f'(n_components={n_components})', fontsize=8, ha='left', va='bottom')
+
+    elif anonym_method == "density-based":
+        tuning_parameters = []
+        for max_dist in max_dist_tuning:
+            for min_samples in min_samples_tuning:
+                for noise_scale in noise_scale_tuning:
+                    tuning_parameters.append((max_dist, min_samples, noise_scale))
+
+        for var_retention, acc_loss, (max_dist, min_samples, noise_scale) in zip(
+                variance_retention_list, accuracy_losses, tuning_parameters):
+            # Create annotation texts for data points
+            anno_text = textwrap.fill(f'(max_dist={max_dist}, min_samples={min_samples}, noise_scale={noise_scale})',
+                                      width=30)
+            plt.text(var_retention, acc_loss, anno_text, fontsize=7, ha='left', va='bottom')
+
+    elif anonym_method == "kmeans":
+        tuning_parameters = []
+        for n_clusters in n_clusters_tuning:
+            for assign_labels in assign_labels_tuning:
+                if noise_scale_tuning is None:
+                    noise_scale_tuning = [0.0]
+                for noise_scale in noise_scale_tuning:
+                    tuning_parameters.append((n_clusters, assign_labels, noise_scale))
+
+        for var_retention, acc_loss, (n_clusters, assign_labels, noise_scale) in zip(
+                variance_retention_list, accuracy_losses, tuning_parameters):
+            # Create annotation texts for data points
+            anno_text = textwrap.fill(
+                f'(n_clusters={n_clusters}, assign_labels={assign_labels}, noise_scale={noise_scale})',
+                width=30)
+            plt.text(var_retention, acc_loss, anno_text, fontsize=7, ha='left', va='bottom')
+
+    elif anonym_method == "gan":
+        for var_retention, acc_loss, n_epochs in zip(
+                variance_retention_list, accuracy_losses, n_epochs_tuning):
+            # Create annotation texts for data points
+            plt.text(var_retention, acc_loss, f'(n_epochs={n_epochs})', fontsize=8, ha='left', va='bottom')
+
+    else:
+        for var_retention, acc_loss, noise_scale in zip(
+                variance_retention_list, accuracy_losses, noise_scale_tuning):
+            # Create annotation texts for data points
+            plt.text(var_retention, acc_loss, f'(noise_scale={noise_scale})', fontsize=8, ha='left', va='bottom')
+
+    # Save the plot
+    plt.savefig(
+        f'outputs/{output_folder}/anonymization_acc_vs_variance_{anonym_method}_{test_set}_{variance_set}_{model_name}{optim_code}_{cp_datetime}.png')
+    print(f'Plot of KNN Classifier (trained on Anonymized Train Embeddings) Accuracy on {test_set} '
+          f'vs. Variance Retention Saved.')
+
+    plt.show()
+
+
+def plot_anonymization_accuracy_vs_robustness(output_folder, model_name, cp_datetime, optim_code,
+                                              anonym_method, noise_scale_tuning, n_components_tuning,
+                                              max_dist_tuning, min_samples_tuning, n_clusters_tuning,
+                                              assign_labels_tuning,
+                                              n_epochs_tuning,
+                                              projection_robustness_list,
+                                              accuracy_losses, test_set='Anonymized Test Embeddings',
+                                              robustness_set='Train'):
+    """
+    Plot accuracy loss vs. projection robustness with annotations.
+
+    Parameters:
+    - output_folder (str): cifar10 or cifar100
+    - model_name (str): CNN model used to extract embeddings
+    - cp_datetime (str): Datetime when the selected checkpoint of training the selected model was saved
+    - optim_code (str): Code indicating all optimizations applied (compared to the selected default optimizations)
+    - anonym_method (str): Anonymization method to be tested.
+    - noise_scale_tuning (list): List of all noise_scale values.
+    - n_components_tuning (list): List of all n_components values.
+    - max_dist_tuning (list): List of all max_dist values.
+    - min_samples_tuning (list): List of all min_samples values.
+    - n_clusters_tuning (list): List of all n_clusters values.
+    - assign_labels_tuning (list): List of all assign_labels values.
+    - projection_robustness_list (list): List of projection robustness values of anonymized train embeddings.
+    - accuracy_losses (list): List of kNN accuracy losses on the selected test set.
+    - test_set (str): Test set that the kNN classifier classifies
+    - robustness_set (str): Embedding set whose projection robustness values are visualized
+    """
+    # Plotting for each combination
+    plt.figure(figsize=(12, 6))
+    # Plot projection robustness of anonymized embeddings
+    plt.plot(projection_robustness_list, accuracy_losses, marker='o', color='blue')
+
+    plt.xlabel('Projection Robustness')
+    plt.ylabel('Accuracy Loss (%)')
+    plt.title(f'Accuracy Loss on {test_set} vs. Projection Robustness of Anonymized {robustness_set} Embeddings\n\n')
+    plt.suptitle(f'Anonymization Method: {anonym_method}, Model: {model_name}')
+
+    # Add text annotations for each data point
+
+    if anonym_method == "pca" and "Original" in test_set:
+        print(
+            f"This anonymization method does not support visualizing accuracy loss on {test_set} vs. projection robustness.")
+        return
+
+    if anonym_method == "pca" and "Anonymized" in test_set:
+        for robustness, acc_loss, n_components in zip(
+                projection_robustness_list, accuracy_losses, n_components_tuning):
+            # Create annotation texts for data points
+            plt.text(robustness, acc_loss, f'(n_components={n_components})', fontsize=8, ha='left', va='bottom')
+
+    elif anonym_method == "density-based":
+        tuning_parameters = []
+        for max_dist in max_dist_tuning:
+            for min_samples in min_samples_tuning:
+                for noise_scale in noise_scale_tuning:
+                    tuning_parameters.append((max_dist, min_samples, noise_scale))
+
+        for robustness, acc_loss, (max_dist, min_samples, noise_scale) in zip(
+                projection_robustness_list, accuracy_losses, tuning_parameters):
+            # Create annotation texts for data points
+            anno_text = textwrap.fill(f'(max_dist={max_dist}, min_samples={min_samples}, noise_scale={noise_scale})',
+                                      width=30)
+            plt.text(robustness, acc_loss, anno_text, fontsize=7, ha='left', va='bottom')
+
+    elif anonym_method == "kmeans":
+        tuning_parameters = []
+        for n_clusters in n_clusters_tuning:
+            for assign_labels in assign_labels_tuning:
+                if noise_scale_tuning is None:
+                    noise_scale_tuning = [0.0]
+                for noise_scale in noise_scale_tuning:
+                    tuning_parameters.append((n_clusters, assign_labels, noise_scale))
+
+        for robustness, acc_loss, (n_clusters, assign_labels, noise_scale) in zip(
+                projection_robustness_list, accuracy_losses, tuning_parameters):
+            # Create annotation texts for data points
+            anno_text = textwrap.fill(
+                f'(n_clusters={n_clusters}, assign_labels={assign_labels}, noise_scale={noise_scale})',
+                width=30)
+            plt.text(robustness, acc_loss, anno_text, fontsize=7, ha='left', va='bottom')
+
+    elif anonym_method == "gan":
+        for robustness, acc_loss, n_epochs in zip(
+                projection_robustness_list, accuracy_losses, n_epochs_tuning):
+            # Create annotation texts for data points
+            plt.text(robustness, acc_loss, f'(n_epochs={n_epochs})', fontsize=8, ha='left', va='bottom')
+
+    else:
+        for robustness, acc_loss, noise_scale in zip(
+                projection_robustness_list, accuracy_losses, noise_scale_tuning):
+            # Create annotation texts for data points
+            plt.text(robustness, acc_loss, f'(noise_scale={noise_scale})', fontsize=8, ha='left', va='bottom')
+
+    # Save the plot
+    plt.savefig(
+        f'outputs/{output_folder}/anonymization_acc_vs_robustness_{anonym_method}_{test_set}_{robustness_set}_{model_name}{optim_code}_{cp_datetime}.png')
+    print(f'Plot of KNN Classifier (trained on Anonymized Train Embeddings) Accuracy on {test_set} '
+          f'vs. Projection Robustness Saved.')
+
+    plt.show()

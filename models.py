@@ -39,13 +39,6 @@ class SimpleConvNet(nn.Module):
         # max pooling layer
         self.pool = nn.MaxPool2d(2, 2)
 
-        # # linear layer (64 * 4 * 4 -> 500)
-        # self.fc1 = nn.Linear(in_features=64 * 4 * 4, out_features=500)
-        # # dropout layer (p=0.25)
-        # self.dropout = nn.Dropout(0.25)
-        # # linear layer (500 -> num_classes)
-        # self.fc2 = nn.Linear(in_features=500, out_features=num_classes)
-
         self.fc1 = nn.Linear(in_features=64 * 4 * 4, out_features=512)
         self.fc2 = nn.Linear(in_features=512, out_features=768)
         self.dropout = nn.Dropout(0.25)
@@ -59,15 +52,6 @@ class SimpleConvNet(nn.Module):
         # flatten image input
         x = x.view(-1, 64 * 4 * 4)
 
-        # add dropout layer
-        # x = self.dropout(x)
-        # # add 1st hidden layer, with relu activation function
-        # x = F.relu(self.fc1(x))
-        # # add dropout layer
-        # x = self.dropout(x)
-        # # add 2nd hidden layer, with relu activation function
-        # x = self.fc2(x)
-
         x = self.dropout(F.relu(self.fc1(x)))
         x = self.dropout(F.relu(self.fc2(x)))
         x = self.fc3(x)
@@ -80,13 +64,6 @@ class SimpleConvNet(nn.Module):
         x = self.pool(F.relu(self.conv3(x)))
         # flatten image input
         x = x.view(-1, 64 * 4 * 4)
-
-        # # add dropout layer
-        # x = self.dropout(x)
-        # # add 1st hidden layer, with relu activation function
-        # x = F.relu(self.fc1(x))
-        # # add dropout layer
-        # x = self.dropout(x)
 
         x = self.dropout(F.relu(self.fc1(x)))
         x = self.dropout(F.relu(self.fc2(x)))
@@ -102,11 +79,6 @@ class SimpleConvNetV2(nn.Module):
         self.conv4 = nn.Conv2d(in_channels=192, out_channels=256, kernel_size=3, padding=1)
         self.pool = nn.MaxPool2d(2, 2)
 
-        # self.fc1 = nn.Linear(in_features=8 * 8 * 256, out_features=512)
-        # self.fc2 = nn.Linear(in_features=512, out_features=64)
-        # self.dropout = nn.Dropout(0.25)
-        # self.fc3 = nn.Linear(in_features=64, out_features=num_classes)
-
         self.fc1 = nn.Linear(in_features=8 * 8 * 256, out_features=512)
         self.fc2 = nn.Linear(in_features=512, out_features=768)
         self.dropout = nn.Dropout(0.25)
@@ -121,11 +93,7 @@ class SimpleConvNetV2(nn.Module):
         x = F.relu(self.conv4(x))  # 16*16*256
         x = self.pool(x)  # 8*8*256
         x = self.dropout(x)
-        x = x.view(-1, 8 * 8 * 256)  # reshape x
-
-        # x = F.relu(self.fc1(x))
-        # x = F.relu(self.fc2(x))
-        # x = self.dropout(x)
+        x = x.view(-1, 8 * 8 * 256)
 
         x = self.dropout(F.relu(self.fc1(x)))
         x = self.dropout(F.relu(self.fc2(x)))
@@ -142,11 +110,7 @@ class SimpleConvNetV2(nn.Module):
         x = F.relu(self.conv4(x))  # 16*16*256
         x = self.pool(x)  # 8*8*256
         x = self.dropout(x)
-        x = x.view(-1, 8 * 8 * 256)  # reshape x
-
-        # x = F.relu(self.fc1(x))
-        # x = F.relu(self.fc2(x))
-        # x = self.dropout(x)
+        x = x.view(-1, 8 * 8 * 256)
 
         x = self.dropout(F.relu(self.fc1(x)))
         x = self.dropout(F.relu(self.fc2(x)))
@@ -205,8 +169,6 @@ class ResnetCustomSimplified(nn.Module):
         self.pre_fc = nn.Sequential(nn.MaxPool2d(2),
                                     nn.Flatten())
 
-        #self.fc = nn.Linear(512 * 2 * 2, num_classes)
-
         self.fc1 = nn.Linear(in_features=512 * 2 * 2, out_features=768)
         self.dropout = nn.Dropout(0.25)
         self.fc2 = nn.Linear(in_features=768, out_features=num_classes)
@@ -219,8 +181,6 @@ class ResnetCustomSimplified(nn.Module):
         out = self.conv_layer_4(out)
         out = self.res_layer2(out) + out
         out = self.pre_fc(out)
-
-        #out = self.fc(out)
 
         out = self.dropout(self.fc1(out))
         out = self.fc2(out)
@@ -310,8 +270,6 @@ class ResNet(nn.Module):
         self.layer3 = self._make_layer(block, 256, num_blocks[2], stride=2)
         self.layer4 = self._make_layer(block, 512, num_blocks[3], stride=2)
 
-        #self.fc = nn.Linear(512 * block.expansion, num_classes)
-
         self.fc1 = nn.Linear(512 * block.expansion, 768)
         self.dropout = nn.Dropout(0.25)
         self.fc2 = nn.Linear(768, num_classes)
@@ -333,8 +291,6 @@ class ResNet(nn.Module):
         out = F.avg_pool2d(out, 4)
         out = out.view(out.size(0), -1)
 
-        #out = self.fc(out)
-
         out = self.dropout(self.fc1(out))
         out = self.fc2(out)
         return out
@@ -348,7 +304,7 @@ class ResNet(nn.Module):
         out = F.avg_pool2d(out, 4)
         out = out.view(out.size(0), -1)
 
-        out = self.dropout(self.fc1(out)) #New
+        out = self.dropout(self.fc1(out))
 
         return out
 
@@ -390,7 +346,3 @@ def get_model(model_name, batch_size, num_classes):
 
     return model
 
-
-#def get_loss_func(loss_func_name):
-#    if loss_func_name == 'cross_entropy':
-#        return nn.CrossEntropyLoss()

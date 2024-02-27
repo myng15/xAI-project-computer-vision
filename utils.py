@@ -27,7 +27,6 @@ def print_model_summary(model, batch_size):
                   ))
 
 
-# Check if your system has cuda gpu or only cpu and get the currently available one
 def get_available_device():
     return torch.device("cuda" if torch.cuda.is_available() else "cpu")
 

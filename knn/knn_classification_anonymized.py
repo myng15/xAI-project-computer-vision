@@ -9,7 +9,7 @@ parent = os.path.dirname(current)
 sys.path.append(parent)
 
 from utils import get_available_device, seed_all
-from visualization import visualize_embeddings, plot_anonymization_accuracy_vs_error
+from visualization import visualize_embeddings, plot_anonymization_accuracy_vs_error, plot_anonymization_accuracy_vs_variance, plot_anonymization_accuracy_vs_robustness
 from anonymization.anonymization_methods import anonymize_embeddings
 from anonymization.anonymization_evaluation import tune_anonymization_parameters, calculate_anonymization_metrics
 from anonymization.anonymization_GAN.GAN_trainer import GANTrainer
@@ -57,8 +57,12 @@ parser.add_argument('--n_clusters_tuning', type=int, nargs='+', default=None,
                     help='number of clusters values for tuning anonymization')
 parser.add_argument('--assign_labels_tuning', type=str, nargs='+', default=None,
                     help='label assigning methods for tuning anonymization')
+parser.add_argument('--n_epochs_tuning', type=int, nargs='+', default=None,
+                    help='number of epochs of training GAN for tuning anonymization')
 parser.add_argument('-ve', '--visualize_embeds', action="store_true",
                     help='visualize extracted train and test embeddings')
+parser.add_argument('--visualization_method', type=str, default='t-SNE',
+                    help='type of the plot used to visualize the embeddings')
 args = vars(parser.parse_args())
 
 num_classes = args['num_classes']
@@ -80,7 +84,9 @@ max_dist_tuning = args['max_dist_tuning']
 min_samples_tuning = args['min_samples_tuning']
 n_clusters_tuning = args['n_clusters_tuning']
 assign_labels_tuning = args['assign_labels_tuning']
+n_epochs_tuning = args['n_epochs_tuning']
 visualize_embeds = args['visualize_embeds']
+visualization_method = args['visualization_method']
 
 # set seed
 seed_all(42)
@@ -118,7 +124,9 @@ if __name__ == '__main__':
                                                    original_test_embeddings_data['filenames']
 
     if tuning:
-        reconstruction_errors_train, accuracy_losses_anonymized_test, accuracy_losses_original_test = tune_anonymization_parameters(
+        reconstruction_error_train_list, accuracy_loss_anonymized_test_list, accuracy_loss_original_test_list, \
+        variance_retention_train_list, variance_retention_test_list, \
+        projection_robustness_train_list, projection_robustness_test_list = tune_anonymization_parameters(
             train_embeddings, test_embeddings, train_labels, test_labels, n_neighbors,
             anonym_method, noise_scale_tuning, n_components_tuning,
             max_dist_tuning, min_samples_tuning, n_clusters_tuning, assign_labels_tuning)
@@ -127,16 +135,52 @@ if __name__ == '__main__':
                                              anonym_method, noise_scale_tuning,
                                              max_dist_tuning, min_samples_tuning,
                                              n_clusters_tuning, assign_labels_tuning,
-                                             reconstruction_errors_train,
-                                             accuracy_losses=accuracy_losses_anonymized_test,
-                                             test_set='Anonymized Test Set')
+                                             n_epochs_tuning,
+                                             reconstruction_error_train_list,
+                                             accuracy_losses=accuracy_loss_anonymized_test_list,
+                                             test_set='Anonymized Test Embeddings')
         plot_anonymization_accuracy_vs_error(output_folder, model_name, cp_datetime, optim_code,
                                              anonym_method, noise_scale_tuning,
                                              max_dist_tuning, min_samples_tuning,
                                              n_clusters_tuning, assign_labels_tuning,
-                                             reconstruction_errors_train,
-                                             accuracy_losses=accuracy_losses_original_test,
-                                             test_set='Original Test Set')
+                                             n_epochs_tuning,
+                                             reconstruction_error_train_list,
+                                             accuracy_losses=accuracy_loss_original_test_list,
+                                             test_set='Original Test Embeddings')
+
+        plot_anonymization_accuracy_vs_variance(output_folder, model_name, cp_datetime, optim_code,
+                                                anonym_method, noise_scale_tuning, n_components_tuning,
+                                                max_dist_tuning, min_samples_tuning, n_clusters_tuning,
+                                                assign_labels_tuning,
+                                                n_epochs_tuning,
+                                                variance_retention_train_list,
+                                                accuracy_losses=accuracy_loss_anonymized_test_list,
+                                                test_set='Anonymized Test Embeddings', variance_set='Train')
+        plot_anonymization_accuracy_vs_variance(output_folder, model_name, cp_datetime, optim_code,
+                                                anonym_method, noise_scale_tuning, n_components_tuning,
+                                                max_dist_tuning, min_samples_tuning, n_clusters_tuning,
+                                                assign_labels_tuning,
+                                                n_epochs_tuning,
+                                                variance_retention_train_list,
+                                                accuracy_losses=accuracy_loss_original_test_list,
+                                                test_set='Original Test Embeddings', variance_set='Train')
+
+        plot_anonymization_accuracy_vs_robustness(output_folder, model_name, cp_datetime, optim_code,
+                                                  anonym_method, noise_scale_tuning, n_components_tuning,
+                                                  max_dist_tuning, min_samples_tuning, n_clusters_tuning,
+                                                  assign_labels_tuning,
+                                                  n_epochs_tuning,
+                                                  projection_robustness_train_list,
+                                                  accuracy_losses=accuracy_loss_anonymized_test_list,
+                                                  test_set='Anonymized Test Embeddings', robustness_set='Train')
+        plot_anonymization_accuracy_vs_robustness(output_folder, model_name, cp_datetime, optim_code,
+                                                  anonym_method, noise_scale_tuning, n_components_tuning,
+                                                  max_dist_tuning, min_samples_tuning, n_clusters_tuning,
+                                                  assign_labels_tuning,
+                                                  n_epochs_tuning,
+                                                  projection_robustness_train_list,
+                                                  accuracy_losses=accuracy_loss_original_test_list,
+                                                  test_set='Original Test Embeddings', robustness_set='Train')
 
     else:
         if anonym_method == 'kmeans':
@@ -148,7 +192,8 @@ if __name__ == '__main__':
                 test_embeddings, test_labels, anonym_method,
                 noise_scale=noise_scale,
                 n_clusters=n_clusters, assign_labels=assign_labels)
-        if anonym_method == 'gan':
+
+        elif anonym_method == 'gan':
             d_conv_dim = 32
             g_conv_dim = 32
             latent_dim = 100
@@ -156,14 +201,14 @@ if __name__ == '__main__':
             lr = 0.0002
             trainer = GANTrainer(d_conv_dim, g_conv_dim, latent_dim, embedding_size, lr, device)
             _, train_generator, _, _, _, _ = trainer.load_checkpoint(
-                f'outputs/{output_folder}/train_dcgan_{model_name}{optim_code}_{cp_datetime}.pth')
+                f'outputs/{output_folder}/train_gan_{model_name}{optim_code}_{cp_datetime}.pth')
             train_embeddings_anonymized = anonymize_embeddings(train_embeddings, train_labels, anonym_method,
                                                                noise_scale=noise_scale,
                                                                generator=train_generator,
                                                                batch_size=len(train_embeddings),
                                                                latent_dim=latent_dim, device=device).cpu()
             _, test_generator, _, _, _, _ = trainer.load_checkpoint(
-                f'outputs/{output_folder}/test_dcgan_{model_name}{optim_code}_{cp_datetime}.pth')
+                f'outputs/{output_folder}/test_gan_{model_name}{optim_code}_{cp_datetime}.pth')
             test_embeddings_anonymized = anonymize_embeddings(test_embeddings, test_labels, anonym_method,
                                                               noise_scale=noise_scale,
                                                               generator=test_generator,
@@ -175,6 +220,10 @@ if __name__ == '__main__':
             test_labels_anonymized = knn_classifier.predict(test_embeddings_anonymized)
 
         else:
+            if anonym_method == 'density_based':
+                train_embeddings = train_embeddings[:10000]
+                train_labels = train_labels[:10000]
+
             # Anonymize train and test embeddings
             train_embeddings_anonymized = anonymize_embeddings(train_embeddings, train_labels, anonym_method,
                                                                noise_scale=noise_scale, n_components=n_components,
@@ -197,12 +246,12 @@ if __name__ == '__main__':
             embeddings=test_embeddings_anonymized, labels=test_labels_anonymized)
 
         # EVALUATE PERFORMANCE METRICS OF THE ANONYMIZATION METHOD
-        reconstruction_error_train, accuracy_loss_anonymized_test, accuracy_loss_original_test, \
-        variance_retention, projection_robustness = (
+        reconstruction_error_train, reconstruction_error_test, accuracy_loss_anonymized_test, accuracy_loss_original_test, \
+        variance_retention_train, variance_retention_test, projection_robustness_train, projection_robustness_test = (
             calculate_anonymization_metrics(train_embeddings, test_embeddings, train_labels, test_labels,
                                             train_embeddings_anonymized, test_embeddings_anonymized,
                                             train_labels_anonymized, test_labels_anonymized,
-                                            n_neighbors, anonym_method))
+                                            n_neighbors, anonym_method, n_components))
 
         # Visualize train and test embeddings
         if visualize_embeds:
@@ -212,4 +261,4 @@ if __name__ == '__main__':
                                  anonymized=True, anonym_method=anonym_method,
                                  noise_scale=noise_scale, n_components=n_components,
                                  n_clusters=n_clusters, assign_labels=assign_labels,
-                                 method='t-SNE', plot_n_components=2)
+                                 method=visualization_method, plot_n_components=2)
