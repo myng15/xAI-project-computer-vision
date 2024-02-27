@@ -89,13 +89,13 @@ Adjust the arguments as necessary, e.g. use `--num_classes 100` for CIFAR100. Sp
 - `--visualize_embeds` (and optionally `--visualization_method`): Visualize the extracted embeddings in a t-SNE or PCA plot (default: `--visualization_method` is `t-SNE`)
 
 <p align="center">
-<img alt="Screenshot showing t-SNE Visualization of Train and Test Embeddings." width="70%" src="embeddings/cifar10/embeddings_resnet18_custom_13hj_20240130_143435.png"><br>
+<img alt="Screenshot showing t-SNE Visualization of Train and Test Embeddings." width="90%" src="embeddings/cifar10/embeddings_resnet18_custom_13hj_20240130_143435.png"><br>
 <em>Figure: t-SNE Visualization of Train and Test Embeddings extracted by custom ResNet18 (optim_code: 13hj).</em>
 </p>
 
 - `--visualize_knn`: Visualize kNN classification results for a test embeddings sample
 <p align="center">
-<img alt="Screenshot showing visualization of kNN classification results for a test embeddings sample." width="90%" src="outputs/cifar10/knn_sample_simple_convnet_1359_20240130_115002.png"><br>
+<img alt="Screenshot showing visualization of kNN classification results for a test embeddings sample." width="100%" src="outputs/cifar10/knn_sample_simple_convnet_1359_20240130_115002.png"><br>
 <em>Figure: Visualization of kNN classification results for a test embeddings sample extracted by a simple custom CNN (optim_code: 1359).</em>
 </p>
 
@@ -186,7 +186,7 @@ Metrics to evaluate anonymization methods:
 - **Reconstruction Error** (mean squared difference between the original and anonymized set): Indicates how much altered the anonymized embeddings manages to get compared to the original. Higher reconstruction error values are desirable for better anonymization, but can decrease the utility of the embeddings.
 
 <p align="center">
-<img alt="Screenshot showing plot of Accuracy Loss vs. Reconstruction Error." width="70%" src="outputs/cifar10/anonymization_acc_vs_error_laplace_Anonymized Test Embeddings_resnet18_custom_13hj_20240130_143435.png"><br>
+<img alt="Screenshot showing plot of Accuracy Loss vs. Reconstruction Error." width="80%" src="outputs/cifar10/anonymization_acc_vs_error_laplace_Anonymized Test Embeddings_resnet18_custom_13hj_20240130_143435.png"><br>
 <em>Figure: Example plot of KNN Classifier (trained on Anonymized Train Embeddings) Accuracy on Anonymized Test Embeddings (extracted by custom ResNet18 (optim_code: 13hj)) vs. their Reconstruction Error.</em>
 </p>
 
@@ -201,7 +201,7 @@ Higher accuracy values or lower accuracy loss values are an indicator of better 
 - **Projection Robustness** (absolute difference between the mean pairwise distance between the embeddings before and after anonymization): Indicates how well the anonymized embeddings maintain their relative distances or relationships in the projected space. **Lower** values of this metric means **more** projection robustness, which is desirable for better utility, but possibly not for more privacy. 
 
 <p align="center">
-<img alt="Screenshot showing plot of Accuracy Loss vs. Projection Robustness." width="70%" src="outputs/cifar10/anonymization_acc_vs_robustness_kmeans_param_assign_labels_Anonymized Test Embeddings_Train_resnet18_custom_13hj_20240130_143435.png"><br>
+<img alt="Screenshot showing plot of Accuracy Loss vs. Projection Robustness." width="80%" src="outputs/cifar10/anonymization_acc_vs_robustness_kmeans_Anonymized Test Embeddings_Train_resnet18_custom_13hj_20240130_143435.png"><br>
 <em>Figure: Example plot of KNN Classifier (trained on Anonymized Train Embeddings) Accuracy on Anonymized Test Embeddings (extracted by custom ResNet18 (optim_code: 13hj)) vs. their Projection Robustness.</em>
 </p>
 
@@ -233,8 +233,8 @@ Higher accuracy values or lower accuracy loss values are an indicator of better 
   - Average Inference Time
 
 <p align="center">
-<img alt="Screenshot showing plot of Average Accuracy vs. Incoming Batch Size." width="70%" src="outputs/cifar10/online_acc_vs_batch_size_new_resnet18_custom_13hj_20240130_143435.png"><br>
-<em>Figure: Example plot of Average Accuracy vs. Incoming Batch Size in Online Domain Incremental Learning of Embeddings (extracted by custom ResNet18 (optim_code: 13hj)).</em>
+<img alt="Screenshot showing plot of Average Accuracy vs. Incoming Batch Size." width="80%" src="outputs/cifar10/online_acc_vs_batch_size_DINOv2_20240226_111200.png"><br>
+<em>Figure: Example plot of Average Accuracy vs. Incoming Batch Size in Online Domain Incremental Learning of Embeddings (extracted by DINOv2).</em>
 </p>
 
 ## Known issues and limitations
