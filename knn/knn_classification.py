@@ -38,6 +38,8 @@ parser.add_argument('--n_neighbors', type=int,
                     help='number of nearest neighbors for kNN classifier')
 parser.add_argument('-ve', '--visualize_embeds', action="store_true",
                     help='visualize extracted train and test embeddings')
+parser.add_argument('--visualization_method', type=str, default='t-SNE',
+                    help='type of the plot used to visualize the embeddings')
 parser.add_argument('-vk', '--visualize_knn', action="store_true",
                     help='visualize a test batch of images that are embedded by the selected model and '
                          'classified using kNN')
@@ -51,6 +53,7 @@ batch_size = args['batch_size']
 num_workers = args['num_workers']
 n_neighbors = args['n_neighbors']
 visualize_embeds = args['visualize_embeds']
+visualization_method = args['visualization_method']
 visualize_knn = args['visualize_knn']
 
 # set seed
@@ -125,6 +128,6 @@ if __name__ == '__main__':
     if visualize_embeds:
         visualize_embeddings(train_embeddings, train_labels, test_embeddings, test_labels,
                              output_folder, model_name, cp_datetime, optim_code=optim_code,
-                             method='t-SNE', plot_n_components=2)
+                             method=visualization_method, plot_n_components=2)
 
 

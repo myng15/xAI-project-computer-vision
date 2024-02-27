@@ -61,6 +61,8 @@ parser.add_argument('--n_epochs_tuning', type=int, nargs='+', default=None,
                     help='number of epochs of training GAN for tuning anonymization')
 parser.add_argument('-ve', '--visualize_embeds', action="store_true",
                     help='visualize extracted train and test embeddings')
+parser.add_argument('--visualization_method', type=str, default='t-SNE',
+                    help='type of the plot used to visualize the embeddings')
 args = vars(parser.parse_args())
 
 num_classes = args['num_classes']
@@ -84,6 +86,7 @@ n_clusters_tuning = args['n_clusters_tuning']
 assign_labels_tuning = args['assign_labels_tuning']
 n_epochs_tuning = args['n_epochs_tuning']
 visualize_embeds = args['visualize_embeds']
+visualization_method = args['visualization_method']
 
 # set seed
 seed_all(42)
@@ -258,4 +261,4 @@ if __name__ == '__main__':
                                  anonymized=True, anonym_method=anonym_method,
                                  noise_scale=noise_scale, n_components=n_components,
                                  n_clusters=n_clusters, assign_labels=assign_labels,
-                                 method='t-SNE', plot_n_components=2)
+                                 method=visualization_method, plot_n_components=2)
