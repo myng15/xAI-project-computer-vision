@@ -174,6 +174,5 @@ if __name__ == "__main__":
     print(f"Average Forward Transfer CI: {avg_fwt_ci[0] * 100:.2f}% \u00B1 {avg_fwt_ci[1] * 100:.2f}%")
     for key, value in corr_dict.items():
         print(f"{key} Correlation: {value:.4f}")
-
     print(f"Average Training Time: {avg_training_time:.4f} seconds")
     print(f"Average Inference Time: {avg_inference_time:.4f} seconds")
