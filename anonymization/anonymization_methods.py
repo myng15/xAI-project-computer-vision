@@ -83,14 +83,14 @@ def anonymize_embeddings_pca(embeddings, n_components):
     return anonymized_embeddings
 
 
-def anonymize_embeddings_density_based(embeddings, max_dist=0.5, min_samples=5, noise_scale=0.1):
+def anonymize_embeddings_density_based(embeddings, max_dist, min_samples, noise_scale=0.1):
     """
     Anonymize embeddings using density-based clustering.
     Parameters:
     - embeddings: PyTorch tensor, the original embeddings
     - max_dist: float, maximum distance between two samples for one to be considered as in the neighborhood of the other
     - min_samples: int, the number of samples in a neighborhood for a point to be considered as a core point
-    - noise_scale: float, scale parameter for Laplace noise
+    - noise_scale: float, scale parameter for Gaussian noise
     Returns: PyTorch tensor, anonymized embeddings
     """
     embeddings = embeddings.numpy()
@@ -159,6 +159,7 @@ def anonymize_embeddings_kmeans(embeddings, labels, n_clusters=5000, assign_labe
     - n_clusters (int): number of clusters to form (must be less than number of embeddings)
     - assign_labels (str): determines how to assign labels to aggregated embeddings.
                      Options: 'majority', 'centroid'
+    - noise_scale: float, scale parameter for Laplace noise
 
     Returns:
     - aggregated_embeddings (FloatTensor): aggregated embeddings
